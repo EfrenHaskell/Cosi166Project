@@ -17,22 +17,24 @@ export default function CodeEditor(){
 
   const sendCodeSample = async () => {
     const code = getEditorValue()
+    const [output, setOutput] = useState("");
+    const [error, setError] = useState("");
+
     try {
       const response = await fetch('http://localhost:9000/api/submitCode', {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ codeSample: {code}}),
+            body: JSON.stringify({ code }),
       });
       const result = await response.json();
-      console.log('PUT request (submitCode) returned:', result.status);
-      if (result.status == "received") {
-        console.log("out", result.out, "err", result.err);
+      if (result.status === "received") {
+        setOutput(result.out || "");
+        setError(result.err || "");
       }
-
     } catch(error) {
-      console.error('PUT request (submitCode) failed:', error);
+      setError('PUT submitCode failed:', error.message);
     }
   };
   

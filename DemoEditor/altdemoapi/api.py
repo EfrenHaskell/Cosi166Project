@@ -39,7 +39,7 @@ def run_sub_process(py_file):
     :param py_file:
     :return:
     """
-    result = subprocess.run(f"python {py_file}", capture_output=True, text=True)
+    result = subprocess.run(f"python3 {py_file}", capture_output=True, text=True)
     return result.stdout, result.stderr
 
 
@@ -51,7 +51,7 @@ def submit_code(code: dict):
     :param code:
     :return:
     """
-    raw_to_file(code["codeSample"])
+    raw_to_file(code)
     out, err = run_sub_process("test.py")
     return {"status": "received", "out": out, "err": err}
 
@@ -79,6 +79,6 @@ def get_problem():
     global prompts
     if len(prompts) > 0:
         curr_prompt = prompts[-1]
-        return {"status": " :"prompt": curr_prompt}
+        return {"status": "ok", "prompt": curr_prompt}
     else:
         return {"status": "queue empty"}
