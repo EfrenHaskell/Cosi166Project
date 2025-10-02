@@ -19,7 +19,11 @@ class ConfigTags:
 
 class QueryTags:
     def __init__(self):
-
+        self.TEST_D = "test_d"
+        self.TEST_EF = "test_eh"
+        self.TEST_EK = "test_ek"
+        self.TEST_J = "test_j"
+        self.TEST_P = "test_p"
 
 
 def load(file_nm):

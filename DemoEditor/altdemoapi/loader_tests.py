@@ -35,9 +35,12 @@ class LoadErrorTests(TestCase):
 
 class LoadQueryTests(TestCase):
 
-    def test_key_pair_match(self):
-        for query in vars(load.QUERY_TAGS).values():
-            self.assertIn(query, load.QUERY)
+    def test_query_test(self):
+        self.assertEqual("this is a test for queries_d.yaml", load.QUERY[load.QUERY_TAGS.TEST_D])
+        self.assertEqual("this is a test for queries_p.yaml", load.QUERY[load.QUERY_TAGS.TEST_P])
+        self.assertEqual("this is a test for queries_j.yaml", load.QUERY[load.QUERY_TAGS.TEST_J])
+        self.assertEqual("this is a test for queries_ef.yaml", load.QUERY[load.QUERY_TAGS.TEST_EF])
+        self.assertEqual("this is a test for queries_ek.yaml", load.QUERY[load.QUERY_TAGS.TEST_EK])
 
 
 if __name__ == "__main__":
