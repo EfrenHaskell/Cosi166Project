@@ -33,5 +33,12 @@ class LoadErrorTests(TestCase):
             self.assertIn(error, load.ERRORS)
 
 
+class LoadQueryTests(TestCase):
+
+    def test_key_pair_match(self):
+        for query in vars(load.QUERY_TAGS).values():
+            self.assertIn(query, load.QUERY)
+
+
 if __name__ == "__main__":
     main()
