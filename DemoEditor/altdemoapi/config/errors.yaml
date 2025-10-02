@@ -1,2 +1,3 @@
 null_response: "Tried parsing null or empty response"
 ai_response_format: "AI response did not match the desired problem/skill format"
+db_run_time: "Database connection failed"

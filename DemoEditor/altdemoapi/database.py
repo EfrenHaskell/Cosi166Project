@@ -9,7 +9,7 @@ class Database:
             self.conn: sql.Connection = self.connect()
             self.cursor = self.conn.cursor()
         except sql.Error as e:
-            raise RuntimeError(f"Database connection failed: {e}")
+            raise RuntimeError(f"{load.ERRORS[load.ERROR_TAGS.DB_RUN_TIME]}: {e}")
 
     def __enter__(self) -> "Database":
         return self
@@ -27,5 +27,5 @@ class Database:
             database=load.DB_DATABASE
         )
 
-    def query(self):
+    def query(self, query_str: str):
         pass

@@ -7,6 +7,7 @@ class ErrorTags:
     def __init__(self):
         self.NULL_RESPONSE = "null_response"
         self.AI_RESPONSE_FORMAT = "ai_response_format"
+        self.DB_RUN_TIME = "db_run_time"
 
 
 class ConfigTags:

@@ -60,6 +60,18 @@ Grant privileges for project database
 Apply Privileges
 <br>
 `FLUSH PRIVILEGES;`
+<br>
+Add info to .env:
+<br>
+```
+DB_USER="app_connect"
+DB_PASSWORD="cosi-166-connpass"
+DB_HOST="localhost"
+DB_DATABASE="learning_app"
+```
+<br>
+
+#### 
 ## Running the Demo API
 To run the demo, execute the following:
 `python run.py`
