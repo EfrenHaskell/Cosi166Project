@@ -1,5 +1,6 @@
 import pymysql as sql
 import load
+import os
 
 
 class Database:
@@ -9,9 +10,63 @@ class Database:
             self.conn: sql.Connection = self.connect()
             self.cursor = self.conn.cursor()
         except sql.Error as e:
-            raise RuntimeError(f"{load.ERRORS[load.ERROR_TAGS.DB_RUN_TIME]}: {e}")
+            raise RuntimeError(f"{load.ERRORS.db_run_time}: {e}")
+
+    @staticmethod
+    def _db_config_exists():
+        """
+        Ensure the database build file is present in the file structure
+        """
+
+        if not os.path.exists(load.CONFIG.db_set_up_path):
+            raise Exception(load.ERRORS.db_set_up_exists)
+
+    def _has_table(self, name: str) -> bool:
+        """
+        Check if a table is currently in the database
+
+        Parameters
+        ----------
+        name: str
+            The name of the table
+
+        Returns
+        -------
+        bool
+            - If the table name is found in the databases' information_schema, return True
+            - Else, return False
+
+        """
+
+        self.cursor.execute("""
+            SELECT COUNT(*)
+            FROM information_schema.tables
+            WHERE table_schema = %s
+            AND table_name = %s
+        """, (load.DB_DATABASE, name))
+
+        result = self.cursor.fetchone()
+        return result[0] == 1
+
+    def _parse(self):
+        pass
+
+    def _build_db(self):
+        """
+        Build database -- initializing all tables not currently present in the database instance
+        """
+        with open(load.CONFIG.db_set_up_path, "r") as set_up_file:
+            scripts = set_up_file.read()
+        for statement in scripts.strip().split(";"):
+            if statement.isspace():
+                continue
+            else:
+
+                self.cursor.execute(statement)
 
     def __enter__(self) -> "Database":
+        self._db_config_exists()
+        self._build_db()
         return self
 
     def __exit__(self):

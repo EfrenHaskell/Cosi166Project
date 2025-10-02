@@ -1,1 +1,2 @@
-test_eh: this is a test for queries_ef.yaml
+test_eh:
+  msg:

@@ -1,6 +1,7 @@
 from openai import OpenAI
 import load
 import re
+import os
 
 
 class Section:
@@ -65,7 +66,7 @@ class ResponseTemplate:
 
     def str_to_template(self):
         if len(self.text) == 0 or self.text is None:
-            raise Exception(load.ERRORS[load.ERROR_TAGS.NULL_RESPONSE])
+            raise Exception(load.ERRORS.null_response)
         else:
             lines = re.split(r"\n+", self.text)
             curr_section = None
@@ -77,7 +78,7 @@ class ResponseTemplate:
                 elif line == "**Skills:**":
                     curr_section = self.skill_section
                 elif curr_section is None:
-                    raise Exception(load.ERRORS[load.ERROR_TAGS.AI_RESPONSE_FORMAT])
+                    raise Exception(load.ERRORS.ai_response_format)
                 else:
                     curr_section.append(line)
 
@@ -94,8 +95,8 @@ class Agent:
 
     def __init__(self):
 
-        self.api_key = os.getenv()
-        self.ai_context = load.CONFIG[load.CONFIG_TAGS.AI_CONTEXT]
+        self.api_key = load.OPEN_AI_API_KEY
+        self.ai_context = load.CONFIG.ai_context
         self.client = OpenAI(api_key=self.api_key,)
 
     @staticmethod

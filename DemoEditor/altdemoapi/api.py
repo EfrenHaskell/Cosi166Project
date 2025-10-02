@@ -31,9 +31,12 @@ def _clean_extra_nl(lines: str):
 
 def raw_to_file(code: dict):
     """
-    Writes raw input to file
-    :param code:
-    :return:
+    Writes raw code input to file
+
+    Parameters
+    ----------
+    code: dict
+        Dictionary of form {"code": "..."} containing code to be executed by server
     """
     print(f"Got input: {code}")
     with open("test.py", "w") as file:

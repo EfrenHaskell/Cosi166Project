@@ -1,21 +1,7 @@
 import yaml
 import os
 from dotenv import load_dotenv
-
-
-class ErrorTags:
-    def __init__(self):
-        self.NULL_RESPONSE = "null_response"
-        self.AI_RESPONSE_FORMAT = "ai_response_format"
-        self.DB_RUN_TIME = "db_run_time"
-
-
-class ConfigTags:
-
-    def __init__(self):
-        self.AI_CONTEXT = "ai_context"
-        self.TEST_DIR = "test_file_dir"
-        self.AI_SAMPLES = "ai_sample_inc"
+from typing import Any
 
 
 class QueryTags:
@@ -27,17 +13,45 @@ class QueryTags:
         self.TEST_P = "test_p"
 
 
-def load(file_nm):
-    with open(file_nm, "r") as file:
-        return yaml.safe_load(file)
+class Loader:
+    def load(self):
+        pass
+
+    @staticmethod
+    def load_file(file_nm):
+        with open(file_nm, "r") as file:
+            return yaml.safe_load(file)
 
 
-def load_config():
-    return load("config/conf.yaml")
+class Errors(Loader):
+    def __init__(self):
+        self.null_response = None
+        self.ai_response_format = None
+        self.db_run_time = None
+        self.db_set_up_exists = None
+
+    def load(self):
+        loaded_errors: dict[str, Any] = self.load_file("config/errors.yaml")
+        error_fields = vars(self)
+        for error, error_str in loaded_errors.items():
+            error_fields[error] = error_str
 
 
-def load_errors():
-    return load("config/errors.yaml")
+class Config(Loader):
+    def __init__(self):
+        self.ai_context = None
+        self.test_file_dir = None
+        self.ai_sample_inc = None
+        self.db_set_up_path = None
+
+    def load(self):
+        loaded_config: dict[str, Any] = self.load_file("config/errors.yaml")
+        config_fields = vars(self)
+        for config, config_element in loaded_config.items():
+            config_fields[config] = config_element
+
+class Query(Loader):
+
 
 
 def load_queries():
@@ -51,18 +65,19 @@ def load_queries():
 
 
 # meta
-ERROR_TAGS = ErrorTags()
-CONFIG_TAGS = ConfigTags()
-QUERY_TAGS = QueryTags()
-ERRORS = load_errors()
-CONFIG = load_config()
+ERRORS = Errors()
+CONFIG = Config()
 QUERY = load_queries()
+ERRORS.load()
+CONFIG.load()
+
 load_dotenv()
 OPEN_AI_API_KEY = os.getenv("OPEN_AI_API_KEY")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
 DB_DATABASE = os.getenv("DB_DATABASE")
+
 
 def increment_ai_samples():
     old_samples = CONFIG[CONFIG_TAGS.AI_SAMPLES]
