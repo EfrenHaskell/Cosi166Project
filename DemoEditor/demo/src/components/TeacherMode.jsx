@@ -2,10 +2,35 @@ import React, { useState } from "react";
 
 export default function TeacherMode({ teacherMode, setTeacherMode}) {
   const [inputValue, setInputValue] = useState("");
+  const [loadingAnswer, setLoadingAnswer] = useState(false);
+  const [studentResponse, setStudentResponse] = useState([]);
 
   const handleToggle = () => {
     setTeacherMode(!teacherMode);
   };
+
+
+  const fetchStudentAnswers = async () => {
+
+    setLoadingAnswer(true);
+
+    try {
+      const response = await fetch('http://localhost:9000/api/getStudentAnswers');
+      const result = await response.json();
+
+      if (result.status === "answers found") {
+        setStudentResponse(prev => [...prev, result.answer]);
+      } else if (result.status === "answer not found") {
+        console.log('No student answers currently');
+      }
+    } catch (error) {
+      console.error('Error fetching student answers:', error);
+    } finally {
+      setLoadingAnswer(false);
+    }
+
+  };
+
 
   const handleSubmit =  async (e) => {
     e.preventDefault();
@@ -40,6 +65,7 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
       </button>
 
       {teacherMode && (
+        
         <div>
           <h3>Teacher Mode</h3>
           <form onSubmit={handleSubmit}>
@@ -50,6 +76,25 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
             />
             <button type="submit">Submit</button>
           </form>
+
+          <div> 
+            <h4> Student Answers</h4>
+            <button 
+            onClick = {fetchStudentAnswers}
+            disabled = {loadingAnswer}>
+              {loadingAnswer ? "Loading Answer" : "Refresh Answer"}
+            </button>
+
+          {studentResponse.length === 0 ? ( 
+            <p> No student answers</p>
+          ) : (
+            studentResponse.map((answer) => (
+              <div>
+                {answer}
+              </div>
+            ))
+          )}
+          </div>
         </div>
       )}
     </div>

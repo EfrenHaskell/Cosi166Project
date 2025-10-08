@@ -37,6 +37,22 @@ const sendCodeSample = async () => {
     } catch(error) {
       setError(error.message);
     }
+
+    try {
+      const response = await fetch('http://localhost:9000/api/studentAnswers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ studentAnswers: code })
+      });
+      const result = await response.json();
+      if (result.status === "recieved") {
+        console.log("Student answer submitted successfully");
+      }
+    } catch(error) {
+      console.error('Failed to submit student answer:', error);
+    }
   };
   
   return (
