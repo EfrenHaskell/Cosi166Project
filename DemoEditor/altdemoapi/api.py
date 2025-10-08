@@ -92,3 +92,28 @@ def get_problem():
     else:
         return {"status": "queue empty"}
 
+@api.post('/api/studentAnswers')
+def create_student_answers(code: dict):
+    """
+    Route for sending student answers of question
+    to the backend from the front end
+    :param code:
+    :return:
+    """
+    curr_session.queue_prompt(code['studentAnswers'])
+    return {'status': 'recieved'}
+
+@api.get('/api/getStudentAnswers')
+def get_student_answers():
+
+    """
+    Route to retrieve student answers
+    to be displayed for the teacher
+    :return:
+    """
+    
+    if curr_session.has_prompt():
+        answer = curr_session.pop_prompt()
+        return {'status': 'answers found', 'answer' : answer}
+    else:
+        return {'status': 'answer not found'}
