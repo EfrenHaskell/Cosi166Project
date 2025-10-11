@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+//import '/App.css'  from '/App.css'
 
 export default function TeacherMode({ teacherMode, setTeacherMode}) {
   const [inputValue, setInputValue] = useState("");
@@ -9,26 +10,20 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
     setTeacherMode(!teacherMode);
   };
 
-
+  //fetch student asnswers from api getStudentAnswers
   const fetchStudentAnswers = async () => {
-
-    setLoadingAnswer(true);
-
-    try {
-      const response = await fetch('http://localhost:9000/api/getStudentAnswers');
-      const result = await response.json();
-
-      if (result.status === "answers found") {
-        setStudentResponse(prev => [...prev, result.answer]);
-      } else if (result.status === "answer not found") {
-        console.log('No student answers currently');
+      setLoadingAnswer(true)
+      try{
+        const response = await fetch('http://localhost:9000/api/getStudentAnswers')
+        if(!resonpse.ok){
+          throw new Error(`Error message: ${response.status} `)
+        }
+        const result = await response.json()
+        setStudentResponse(prev => [...prev, result])
       }
-    } catch (error) {
-      console.error('Error fetching student answers:', error);
-    } finally {
-      setLoadingAnswer(false);
-    }
-
+      catch(error){
+        console.error(`Failed to retrieve student answers ${error}`)
+      }
   };
 
 
@@ -58,6 +53,8 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
 
   };
 
+
+
   return (
     <div className="teacher-mode">
       <button className="teacherModeButton" onClick={handleToggle}>
@@ -77,23 +74,10 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
             <button type="submit">Submit</button>
           </form>
 
-          <div> 
-            <h4> Student Answers</h4>
-            <button 
-            onClick = {fetchStudentAnswers}
-            disabled = {loadingAnswer}>
-              {loadingAnswer ? "Loading Answer" : "Refresh Answer"}
+          <div className = 'display-Student-Answers'>
+            <button onClick={fetchStudentAnswers}>
+                Get student answers
             </button>
-
-          {studentResponse.length === 0 ? ( 
-            <p> No student answers</p>
-          ) : (
-            studentResponse.map((answer) => (
-              <div>
-                {answer}
-              </div>
-            ))
-          )}
           </div>
         </div>
       )}

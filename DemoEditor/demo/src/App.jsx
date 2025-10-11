@@ -10,6 +10,7 @@ function App() {
 
   return (
     <>
+      {/* make basic  login feature that goes to teacher mode or student mode based on sign information provided*/}
       <TeacherMode teacherMode={teacherMode} setTeacherMode={setTeacherMode} />
 
       {!teacherMode && <StudentMode />}
