@@ -4,6 +4,7 @@ import TeacherMode from "./components/TeacherMode";
 import StudentMode from "./components/StudentMode";
 import MainNotes from "./components/MainNotes";
 import Sidebar from "./components/Sidebar";
+import DarkLightTheme from "./components/DarkLightTheme";
 
 function App() {
   const [teacherMode, setTeacherMode] = useState(false);
@@ -11,6 +12,9 @@ function App() {
   return (
     <>
       {/* make basic  login feature that goes to teacher mode or student mode based on sign information provided*/}
+
+      {<DarkLightTheme/>}
+
       <TeacherMode teacherMode={teacherMode} setTeacherMode={setTeacherMode} />
 
       {!teacherMode && <StudentMode />}
