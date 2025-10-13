@@ -51,7 +51,7 @@ const sendCodeSample = async () => {
 
     try{
       const response = await fetch('http://localhost:9000/api/studentAnswers', {
-        method: 'Put',
+        method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({studentAnswers : {code}})
       })

@@ -15,14 +15,20 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
       setLoadingAnswer(true)
       try{
         const response = await fetch('http://localhost:9000/api/getStudentAnswers')
-        if(!resonpse.ok){
+        if(!response.ok){
           throw new Error(`Error message: ${response.status} `)
         }
         const result = await response.json()
-        setStudentResponse(prev => [...prev, result])
+        console.log('Student answer result:', result)
+        if (result.status === 'answers found') {
+          setStudentResponse(prev => [...prev, result.answer])
+        }
       }
       catch(error){
         console.error(`Failed to retrieve student answers ${error}`)
+      }
+      finally {
+        setLoadingAnswer(false)
       }
   };
 
@@ -75,9 +81,28 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
           </form>
 
           <div className = 'display-Student-Answers'>
-            <button onClick={fetchStudentAnswers}>
-                Get student answers
+            <button onClick={fetchStudentAnswers} disabled={loadingAnswer}>
+                {loadingAnswer ? 'Loading...' : 'Get student answers'}
             </button>
+            {studentResponse.length > 0 && (
+              <div>
+                <h4>Student Answers:</h4>
+                {studentResponse.map((answer, index) => (
+                  <div key={index} style={{ 
+                    backgroundColor: '#f0f0f0', 
+                    padding: '10px', 
+                    margin: '5px 0', 
+                    borderRadius: '4px',
+                    fontFamily: 'monospace',
+                    whiteSpace: 'pre-wrap'
+                  }}>
+                    <strong>Answer {index + 1}:</strong>
+                    <br />
+                    {answer}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
