@@ -51,16 +51,17 @@ class Config(Loader):
             config_fields[config] = config_element
 
 class Query(Loader):
-
+    pass
 
 
 def load_queries():
     query_dir: str = "config/queries"
     queries = {}
     for query_file in os.listdir(query_dir):
-        new_queries = load(f"{query_dir}/{query_file}")
-        for key in new_queries:
-            queries[key] = new_queries[key]
+        new_queries = Loader.load_file(f"{query_dir}/{query_file}")
+        if new_queries:  # Check if the file has content
+            for key in new_queries:
+                queries[key] = new_queries[key]
     return queries
 
 

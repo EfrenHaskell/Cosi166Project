@@ -22,7 +22,7 @@ export default function DarkLightTheme(){
     return(
         <>
         
-        <button  onClick = {backgroundTheme}> Toggle theme </button>
+        <button  id = 'theme-toggle' onClick = {backgroundTheme}> Toggle theme </button>
 
         </>
 

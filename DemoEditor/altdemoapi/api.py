@@ -15,7 +15,9 @@ api = FastAPI()
 # add CORS handling to deal with restricted transaction origin
 api.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"],
                    allow_headers=["*"])
-curr_session = Session()
+# Separate sessions for problems and student answers
+problem_session = Session()
+student_answer_session = Session()
 
 
 def _clean_extra_nl(lines: str):
@@ -75,7 +77,7 @@ def create_problem(new_prompt: dict):
     :param new_prompt:
     :return:
     """
-    curr_session.queue_prompt(new_prompt["prompt"])
+    problem_session.queue_prompt(new_prompt["prompt"])
     return {"status": "received"}
 
 
@@ -86,8 +88,8 @@ def get_problem():
     On student front-end requesting prompt
     :return:
     """
-    if curr_session.has_prompt():
-        curr_prompt = curr_session.pop_prompt()
+    if problem_session.has_prompt():
+        curr_prompt = problem_session.pop_prompt()
         return {"status": "queue has element", "prompt": curr_prompt}
     else:
         return {"status": "queue empty"}
@@ -100,20 +102,21 @@ def create_student_answers(code: dict):
     :param code:
     :return:
     """
-    curr_session.queue_prompt(code['studentAnswers'])
-    return {'status': 'recieved'}
+    # Extract the code from the nested structure
+    student_code = code['studentAnswers']['code']
+    student_answer_session.queue_prompt(student_code)
+    return {'status': 'received'}
 
 @api.get('/api/getStudentAnswers')
 def get_student_answers():
-
     """
     Route to retrieve student answers
     to be displayed for the teacher
     :return:
     """
     
-    if curr_session.has_prompt():
-        answer = curr_session.pop_prompt()
+    if student_answer_session.has_prompt():
+        answer = student_answer_session.pop_prompt()
         return {'status': 'answers found', 'answer' : answer}
     else:
         return {'status': 'answer not found'}

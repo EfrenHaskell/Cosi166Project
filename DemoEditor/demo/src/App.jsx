@@ -13,6 +13,7 @@ function App() {
     <>
       {/* make basic  login feature that goes to teacher mode or student mode based on sign information provided*/}
 
+      {/* use to toggle lightmode on and off*/}
       {<DarkLightTheme/>}
 
       <TeacherMode teacherMode={teacherMode} setTeacherMode={setTeacherMode} />
