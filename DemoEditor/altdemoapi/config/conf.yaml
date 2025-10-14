@@ -4,4 +4,4 @@ ai_context: 'help me understand what is wrong with my code without giving me the
   correct then respond with the word "correct"'
 ai_sample_inc: 6
 test_file_dir: test_files
-db_set_up_path: instance\db.sql
+db_set_up_path: instance/db.sql

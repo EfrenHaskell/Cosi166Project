@@ -45,7 +45,7 @@ class Config(Loader):
         self.db_set_up_path = None
 
     def load(self):
-        loaded_config: dict[str, Any] = self.load_file("config/errors.yaml")
+        loaded_config: dict[str, Any] = self.load_file("config/conf.yaml")
         config_fields = vars(self)
         for config, config_element in loaded_config.items():
             config_fields[config] = config_element

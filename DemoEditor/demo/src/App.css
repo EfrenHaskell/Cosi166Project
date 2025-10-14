@@ -95,3 +95,235 @@
   display: flex;
   justify-content: space-between;
 } */
+
+/* OAuth and Authentication Styles */
+
+.login-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+}
+
+.login-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  padding: 40px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+}
+
+.login-header h1 {
+  color: #333;
+  margin-bottom: 10px;
+  font-size: 28px;
+}
+
+.login-header p {
+  color: #666;
+  margin-bottom: 30px;
+  font-size: 16px;
+}
+
+.google-login-container {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.error-message {
+  background: #fee;
+  color: #c33;
+  padding: 12px;
+  border-radius: 6px;
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+.login-footer p {
+  color: #888;
+  font-size: 12px;
+  margin-top: 20px;
+  line-height: 1.4;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  font-size: 18px;
+  color: #666;
+}
+
+/* User Profile Styles */
+
+.app-header {
+  background: white;
+  border-bottom: 1px solid #eee;
+  padding: 15px 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.user-profile {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.profile-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  background: #667eea;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.profile-info h3 {
+  margin: 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.profile-info p {
+  margin: 2px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.role-badge.teacher {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.role-badge.student {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+.profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.role-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.role-selector label {
+  font-size: 14px;
+  color: #666;
+}
+
+.role-selector select {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.update-role-btn, .logout-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.update-role-btn {
+  background: #4caf50;
+  color: white;
+}
+
+.update-role-btn:hover:not(:disabled) {
+  background: #45a049;
+}
+
+.update-role-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.logout-btn {
+  background: #f44336;
+  color: white;
+}
+
+.logout-btn:hover {
+  background: #da190b;
+}
+
+/* Responsive Design */
+
+@media (max-width: 768px) {
+  .user-profile {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+  
+  .profile-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .login-container {
+    margin: 20px;
+    padding: 30px 20px;
+  }
+}

@@ -5,19 +5,73 @@
 __authors__ = ""
 
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import subprocess
 import re
 from session import Session
+from auth import oauth_service, user_service
+from pydantic import BaseModel
+from typing import Optional
 
 api = FastAPI()
 # add CORS handling to deal with restricted transaction origin
 api.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"],
                    allow_headers=["*"])
+
+# Security
+security = HTTPBearer()
+
 # Separate sessions for problems and student answers
 problem_session = Session()
 student_answer_session = Session()
+
+
+# Pydantic models for OAuth
+class GoogleTokenRequest(BaseModel):
+    token: str
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    user: dict
+
+
+class UserResponse(BaseModel):
+    user_id: int
+    email: str
+    name: str
+    role: str
+    picture_url: Optional[str] = None
+
+
+class RoleUpdateRequest(BaseModel):
+    role: str
+
+
+# Dependency for getting current user
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get current authenticated user from JWT token"""
+    try:
+        token = credentials.credentials
+        payload = oauth_service.verify_jwt_token(token)
+        user = user_service.get_user_by_id(payload["user_id"])
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found"
+            )
+        
+        return user
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials"
+        )
 
 
 def _clean_extra_nl(lines: str):
@@ -120,3 +174,87 @@ def get_student_answers():
         return {'status': 'answers found', 'answer' : answer}
     else:
         return {'status': 'answer not found'}
+
+
+# OAuth Authentication Endpoints
+
+@api.post("/api/auth/google", response_model=AuthResponse)
+async def google_auth(request: GoogleTokenRequest):
+    """
+    Authenticate user with Google OAuth token
+    """
+    try:
+        # Verify Google token
+        google_user_info = await oauth_service.verify_google_token(request.token)
+        
+        # Create or update user in database
+        user_info = user_service.create_or_update_user(google_user_info)
+        
+        # Create JWT token
+        jwt_token = oauth_service.create_jwt_token(
+            user_info["user_id"],
+            user_info["email"],
+            user_info["role"]
+        )
+        
+        return AuthResponse(
+            access_token=jwt_token,
+            user=user_info
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Authentication failed: {str(e)}"
+        )
+
+
+@api.get("/api/auth/me", response_model=UserResponse)
+async def get_current_user_info(current_user: dict = Depends(get_current_user)):
+    """
+    Get current authenticated user information
+    """
+    return UserResponse(**current_user)
+
+
+@api.put("/api/auth/role")
+async def update_user_role(
+    request: RoleUpdateRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Update user role (teacher/student)
+    """
+    success = user_service.update_user_role(current_user["user_id"], request.role)
+    
+    if success:
+        return {"message": "Role updated successfully", "new_role": request.role}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid role or update failed"
+        )
+
+
+@api.post("/api/auth/logout")
+async def logout(current_user: dict = Depends(get_current_user)):
+    """
+    Logout user (client should remove token)
+    """
+    return {"message": "Logged out successfully"}
+
+
+# Protected routes that require authentication
+
+@api.get("/api/protected/test")
+async def protected_test(current_user: dict = Depends(get_current_user)):
+    """
+    Test endpoint for protected routes
+    """
+    return {
+        "message": "This is a protected route",
+        "user": current_user["name"],
+        "role": current_user["role"]
+    }
