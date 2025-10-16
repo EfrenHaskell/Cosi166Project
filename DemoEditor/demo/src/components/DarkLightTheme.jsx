@@ -2,7 +2,10 @@ import {useState, useEffect, use} from 'react';
 
 export default function DarkLightTheme(){
     
-    const [backgroundColor, setBackgroundColor] = useState('white') //Default Color
+    //need to start chaging colors of buttons other objects etc
+
+
+    const [backgroundColor, setBackgroundColor] = useState('white') 
     const [textColor, setTextColor] = useState('black')
     
     const backgroundTheme = () => {
