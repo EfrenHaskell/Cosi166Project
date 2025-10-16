@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import "./App.css";
+import GoogleLogin from "./components/GoogleLogin";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Login from "./components/Login";
 import TeacherMode from "./components/TeacherMode";
@@ -94,12 +95,5 @@ function App() {
   );
 }
 
-function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  );
-}
 
 export default App;
