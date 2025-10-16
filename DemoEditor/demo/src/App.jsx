@@ -9,8 +9,6 @@ import DarkLightTheme from "./components/DarkLightTheme";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userType, setUserType] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userType, setUserType] = useState("student");
   const [teacherMode, setTeacherMode] = useState(false);
 
