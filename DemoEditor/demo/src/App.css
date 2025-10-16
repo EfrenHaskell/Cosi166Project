@@ -119,3 +119,160 @@
   color: #ffffff;            
   box-shadow: 0 6px 14px rgba(31, 111, 235, 0.16);
 }
+.note:hover {
+  background-color: aqua;
+}
+
+.note {
+  margin: 25px 12px 5px 10px;
+  padding: 25px;
+  cursor: pointer;
+  border: 1px solid black;
+  border-radius: 250px;
+}
+
+.note_title {
+  display: flex;
+  justify-content: space-between;
+} */
+
+
+.log-out-button{
+  position: absolute;
+  top: 0px;
+  right: 0px;
+
+}
+
+
+/* Overall container */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f5f7fa;
+  height: 100vh;
+  width: 100%;
+}
+
+/* Form box */
+.login-container form {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 40px 35px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.login-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.login-header h2 {
+  font-size: 22px;
+  color: #333333;
+  font-weight: 600;
+}
+
+/* Form group */
+.form-group {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Labels */
+.form-label,
+.userType {
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+/* Select dropdown */
+select {
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background-color: #fff;
+  font-size: 14px;
+  color: #333;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+select:focus {
+  border-color: #007bff;
+}
+
+/* Input fields (username & password) */
+.input-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background-color: #fdfdfd;
+  transition: border-color 0.2s;
+}
+
+.input-field:focus-within {
+  border-color: #007bff;
+}
+
+/* Small image icon */
+.login-image-container {
+  flex-shrink: 0;
+}
+
+.login-image {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+/* Username and password input fields */
+.username-input,
+.password-input {
+  border: none;
+  outline: none;
+  flex-grow: 1;
+  font-size: 14px;
+  background-color: transparent;
+}
+
+/* Sign in button */
+.sign-in-button {
+  width: 100%;
+  background-color: #007bff;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 0;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.25s, transform 0.1s;
+}
+
+.sign-in-button:hover {
+  background-color: #0056b3;
+}
+
+.sign-in-button:active {
+  transform: scale(0.98);
+}
+
+/* Responsive design */
+@media (max-width: 400px) {
+  .login-container form {
+    width: 90%;
+    padding: 30px 20px;
+  }
+}
+

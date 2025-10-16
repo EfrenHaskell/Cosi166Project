@@ -50,7 +50,7 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
       console.log('Problem submitted:', result);
       
       if (result.status === "received") {
-        setInputValue(""); // Clear input after successful submission
+        setInputValue("");
         console.log("Problem sent to backend successfully");
       }
     } catch (error) {

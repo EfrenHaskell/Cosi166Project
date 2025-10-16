@@ -10,70 +10,83 @@ import DarkLightTheme from "./components/DarkLightTheme";
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userType, setUserType] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userType, setUserType] = useState("student");
   const [teacherMode, setTeacherMode] = useState(false);
 
-  const handleLogin = (type, username, password) => {
-    // You can add your hardcoded credentials validation here
-    // For now, we'll just accept any non-empty credentials
-    console.log(`Login attempt: ${type} - ${username}`);
-    
-    setIsLoggedIn(true);
-    setUserType(type);
-    
-    if (type === "teacher") {
-      setTeacherMode(true);
-    } else {
-      setTeacherMode(false);
+
+  //hardcoding login credentials for now 
+  const loginCredentials = {
+    student: {
+      username: "student",
+      password: "studentpass"
+    },
+    teacher: {
+      username: "teacher",
+      password: "teacherpass"
     }
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setUserType(null);
-    setTeacherMode(false);
+  const handleLogin = (userType, userName, password) => {
+    if(
+      userType === "teacher" && 
+      userName === loginCredentials.teacher.username &&
+      password === loginCredentials.teacher.password
+    )
+      {
+      setTeacherMode(true)
+      setIsLoggedIn(true)
+      setUserType("teacher")
+      } 
+    else if (
+        userType === "student" &&
+        userName === loginCredentials.student.username &&
+        password === loginCredentials.student.password
+      )
+      {
+      setTeacherMode(false)
+      setIsLoggedIn(true)
+      setUserType("student")  
+      }
+    else{
+      alert(`The username or password does not match any ${userType} account`)
+    }
+  };
+
+  const handleLogOut = () => {
+        setIsLoggedIn(false)
+        setTeacherMode(false)
   };
 
   return (
     <>
       {!isLoggedIn ? (
-        <Login onLogin={handleLogin} />
+        <>
+
+          {<Login onLogin={handleLogin} />}
+        </>
       ) : (
         <>
-          {/* use to toggle lightmode on and off*/}
-          <DarkLightTheme />
+        <DarkLightTheme/>
+
+        {/* need to make this its own component too lazy lol*/}
+        <button className = "log-out-button" onClick = {handleLogOut}> Log Out </button>
+
+
+        {teacherMode ? (
           
-          {/* Logout button */}
-          <div style={{ textAlign: 'right', padding: '10px' }}>
-            <button 
-              onClick={handleLogout}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#dc3545',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Logout ({userType})
-            </button>
-          </div>
+          <TeacherMode teacherMode={teacherMode} setTeacherMode={setTeacherMode}/>
+        ) : (
 
-          {userType === "teacher" ? (
-            <TeacherMode teacherMode={teacherMode} setTeacherMode={setTeacherMode} />
-          ) : (
-            <StudentMode />
-          )}
+          <StudentMode/>
 
-          <hr />
+        )
+        }
 
-          {/* the jsx below is for the notes app please do not touch!!!!!! */}
-
-          {/* <div className="notes_app">
-            <Sidebar />
-            <MainNotes />
-          </div> */}
         </>
+
+
+
       )}
     </>
   );

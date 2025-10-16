@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import leetcatImage from '../assets/leetcat.jpeg';
 
-export default function Login() {
+export default function Login({onLogin}) {
   const [userName, setUserName] = useState('')
   const [password,setPassword] = useState('')
   const [userType, setUserType] = useState('student')
@@ -10,7 +10,7 @@ export default function Login() {
     e.preventDefault();
 
     if(userName.trim() && password.trim()){
-      login(userName,password,userType)
+      onLogin(userType,userName,password)
     }
     else{
       alert('Please try again')
@@ -18,6 +18,7 @@ export default function Login() {
 
     
   }
+
 
   return (
 
@@ -28,17 +29,15 @@ export default function Login() {
           </div>
           
               <div className ='form-group'>
-                <form onSubmit = {handleSubmit}>
                   <label className ='userType'> Login as: </label>
                   <select
                   value = {userType}
                   onChange = {(e) => setUserType(e.target.value)}
                   required
                   >
-                    <option>Student</option>
-                    <option>Teacher</option>
+                    <option value ="student">student</option>
+                    <option value ="teacher">teacher</option>
                   </select>
-                </form>
               </div>
           
 
@@ -51,7 +50,7 @@ export default function Login() {
               <div className ='username-input-container'>
                 <input  className ='username-input'
                  placeholder ='Type your username'
-                 value = {userName}
+                 type = "text"
                  onChange={(e) => setUserName(e.target.value)} 
                  required>
                 </input>
@@ -69,6 +68,7 @@ export default function Login() {
                 <input  className ='password-input'
                 value = {password}
                  placeholder ='Type your password'
+                 type = "password"
                  onChange={(e) => setPassword(e.target.value)} 
                  required>
                 </input>
