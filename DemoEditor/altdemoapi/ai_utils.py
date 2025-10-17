@@ -1,3 +1,22 @@
+"""
+Utilities for learning app AI components
+
+Classes
+-------
+AI agent:
+    AI agent class adds safeguards and request/response-handling for the OpenAI API
+Section:
+    Base class for sections of a response
+SkillSection:
+    Class for skill section of a response
+ProblemSection:
+    Class for problem section of a response
+ResponseTemplate:
+    Combination of Skill and Response Sections -- provides parsing template for AI agent output
+
+"""
+
+
 from openai import OpenAI
 import load
 import re
@@ -10,28 +29,36 @@ class Section:
     """
 
     def append(self, line: str):
+        """
+        Base method for superclasses
+        """
         pass
 
 
 class ProblemSection(Section):
     """
     ProblemSection class handles problem text parsing
-        - attributes:
-            - internal: list[str] - internal data object stores problem strings
     """
 
     def __init__(self):
         self.internal: list[str] = []
 
     def append(self, line: str):
+        """
+        Append new line to internal data structure
+
+        Parameters
+        ----------
+        line: str
+            Line of AI response text
+
+        """
         self.internal.append(line)
 
 
 class SkillSection(Section):
     """
     SkillSection class handles skill text parsing
-        - attributes:
-            - internal: dict[str, str] - internal data object stores skill label, skill text pairs
     """
 
     def __init__(self):
@@ -43,8 +70,11 @@ class SkillSection(Section):
          - lines are split into label, text pairs
          - labels are found by the head (the second star) and the tail (the first colon)
          - text is everything following the first colon
-        :param line:
-        :return:
+
+        Parameters
+        ----------
+        line: str
+            Line of AI response text
         """
 
         label_head = line.find("*") + 2
@@ -65,6 +95,15 @@ class ResponseTemplate:
         self.text = text
 
     def str_to_template(self):
+        """
+        Convert AI response to template
+            - Takes structure:
+                **Problems:**
+                    ...
+                **Skills:**
+                    ...
+        """
+
         if len(self.text) == 0 or self.text is None:
             raise Exception(load.ERRORS.null_response)
         else:
@@ -94,13 +133,23 @@ class Agent:
     """
 
     def __init__(self):
-
         self.api_key = load.OPEN_AI_API_KEY
         self.ai_context = load.CONFIG.ai_context
         self.client = OpenAI(api_key=self.api_key,)
 
     @staticmethod
     def _write_sample(file: str, text: str):
+        """
+        Write AI output to test file
+
+        Parameters
+        ----------
+        file: str
+            test sample file name
+        text: str
+            AI response
+
+        """
         with open(file, "w") as sample:
             sample.write(text)
 
@@ -108,7 +157,22 @@ class Agent:
     def _exists(path: str) -> bool:
         return os.path.exists(path)
 
-    def make_request(self, prompt: str, code_sample: str, language: str, debug=None) -> str:
+    def make_request(self, prompt: str, code_sample: str, language: str, debug_path=None) -> str:
+        """
+        Make request to OpenAI API.
+
+        Parameters
+        ----------
+        prompt: str
+            The professor's question prompt
+        code_sample: str
+            The code submitted by the student
+        language: str
+            The programming language code was written in
+        debug_path: str | None
+            The path for debug file to be written to (default is None)
+
+        """
         response = self.client.responses.create(
             model="gpt-4o",
             instructions=f"You are a coding assistant, {self.ai_context}",
@@ -116,9 +180,16 @@ class Agent:
             can you {self.ai_context}, my {language} code:\n{code_sample}"""
         )
         text = response.output_text
-        if debug:
-            self._write_sample(debug, text)
+        if debug_path:
+            self._write_sample(debug_path, text)
         return text
+
+    def test_request(self, prompt: str, code_sample: str, language: str):
+        print(f"""Making test request: model=gpt-4o,
+            instructions=You are a coding assistant, {self.ai_context},
+            input=I was asked to write code that behaves as follows:\n{prompt}\n
+            can you {self.ai_context}, my {language} code:\n{code_sample}""")
+        return "Test complete"
 
     @staticmethod
     def configure_debug_path(test_path, file_nm) -> str:
@@ -126,6 +197,12 @@ class Agent:
 
     @staticmethod
     def parse_response(text) -> ResponseTemplate:
+        """
+        Parse response via ResponseTemplate
+
+        :param text:
+        :return:
+        """
         parse_template = ResponseTemplate(text)
         if text == "correct":
             parse_template.default_message("Good Job!")

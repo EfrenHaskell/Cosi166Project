@@ -41,5 +41,5 @@ if __name__ == "__main__":
         path = agent.configure_debug_path("test_files", ai_session.new_test_file())
         test_prompt = "Write a function print_hello_world that prints the string \"hello world\""
         test_code = "print(\"hello world\")"
-        agent.make_request(prompt=test_prompt, code_sample=test_code, language="python", debug=path)
+        agent.make_request(prompt=test_prompt, code_sample=test_code, language="python", debug_path=path)
         print(ai_session.get_test_example(path))

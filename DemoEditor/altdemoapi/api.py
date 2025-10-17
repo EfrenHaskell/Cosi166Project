@@ -6,6 +6,7 @@ __authors__ = ""
 
 
 from fastapi import FastAPI
+import ai_utils
 from fastapi.middleware.cors import CORSMiddleware
 import subprocess
 import re
@@ -16,6 +17,7 @@ api = FastAPI()
 api.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"],
                    allow_headers=["*"])
 curr_session = Session()
+new_agent = ai_utils.Agent()
 
 
 def _clean_extra_nl(lines: str):
@@ -43,12 +45,17 @@ def raw_to_file(code: dict):
         file.write(_clean_extra_nl(code["code"]))
 
 
-def run_sub_process(py_file):
+def run_sub_process(py_file) -> tuple:
     """
     Run resulting python file
     Returns stdout, stderr from execution
-    :param py_file:
-    :return:
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+
     """
     result = subprocess.run(f"python {py_file}", capture_output=True, text=True)
     return result.stdout, result.stderr

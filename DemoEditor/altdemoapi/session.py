@@ -13,4 +13,3 @@ class Session:
 
     def has_prompt(self) -> bool:
         return len(self.prompts) > 0
-

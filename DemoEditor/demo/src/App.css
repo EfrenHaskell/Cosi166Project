@@ -41,7 +41,19 @@
   color: #888;
 }
 
+.teacherInput {
+  padding-left: 15px;
+  width: 400px;
+  height: 37px;
+  margin-right: 5px;
+  margin-top: 0;
+}
 
+.questionForm {
+  display: flex;
+  justify-content: center;
+  flex-direction: row;
+}
 
 /* this css below is for the notes sidebar part.  */
 

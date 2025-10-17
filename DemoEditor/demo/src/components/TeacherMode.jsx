@@ -42,8 +42,9 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
       {teacherMode && (
         <div>
           <h3>Teacher Mode</h3>
-          <form onSubmit={handleSubmit}>
+          <form className="questionForm" onSubmit={handleSubmit}>
             <input
+              class="teacherInput"
               value={inputValue}
               placeholder="Enter question here"
               onChange={(e) => setInputValue(e.target.value)}

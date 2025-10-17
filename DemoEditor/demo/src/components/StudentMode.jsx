@@ -53,10 +53,10 @@ export default function StudentMode(){
                 <button onClick={handleRefresh}>Refresh Question</button>
             </div>) : 
             (<div>
-                No question asked yet 
+                No question asked yet
                 <button onClick={handleRefresh}>Check for Questions</button>
             </div>)}
-            <CodeEditor />
-        </div>        
+            <CodeEditor prompt={teacherQuestion}/>
+        </div>
     );
 }

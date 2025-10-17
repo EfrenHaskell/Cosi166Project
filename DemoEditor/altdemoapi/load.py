@@ -50,24 +50,25 @@ class Config(Loader):
         for config, config_element in loaded_config.items():
             config_fields[config] = config_element
 
+
 class Query(Loader):
+    pass
 
 
-
-def load_queries():
-    query_dir: str = "config/queries"
-    queries = {}
-    for query_file in os.listdir(query_dir):
-        new_queries = load(f"{query_dir}/{query_file}")
-        for key in new_queries:
-            queries[key] = new_queries[key]
-    return queries
+# def load_queries():
+#     query_dir: str = "config/queries"
+#     queries = {}
+#     for query_file in os.listdir(query_dir):
+#         new_queries = load(f"{query_dir}/{query_file}")
+#         for key in new_queries:
+#             queries[key] = new_queries[key]
+#     return queries
 
 
 # meta
 ERRORS = Errors()
 CONFIG = Config()
-QUERY = load_queries()
+# QUERY = load_queries()
 ERRORS.load()
 CONFIG.load()
 

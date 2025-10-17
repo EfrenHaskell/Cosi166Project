@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import Editor from '@monaco-editor/react';
 
-export default function CodeEditor(){
+export default function CodeEditor( {prompt} ){
   const editorRef = useRef(null);
   const [output, setOutput] = useState("");
   const [error, setError] = useState("");
@@ -26,7 +26,7 @@ const sendCodeSample = async () => {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ codeSample: {code}}),
+            body: JSON.stringify({ codeSample: {code}, prompt: {prompt}}),
       });
       const result = await response.json();
       if (result.status == "received") {
@@ -45,7 +45,7 @@ const sendCodeSample = async () => {
         height='500px'
         width='500px'
         defaultLanguage='python'
-        defaultValue='// Start coding here!'
+        defaultValue='# Start coding here!'
         theme='vs-dark'
         onMount={handleEditorDidMount}
       />
