@@ -17,6 +17,11 @@ export default function CodeEditor( {prompt} ){
     return value;
   }
 
+  const handleRun = () => {
+    sendCodeSample();
+    sendStudentCode();
+  };
+
 const sendCodeSample = async () => {
     const code = getEditorValue()
 
@@ -36,8 +41,38 @@ const sendCodeSample = async () => {
 
     } catch(error) {
       setError(error.message);
+    }}
+
+
+  //sends student code to new api endpoint /studentAnswers
+  const sendStudentCode = async() => {
+
+    const code = getEditorValue()
+
+    try{
+      const response = await fetch('http://localhost:9000/api/studentAnswers', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({studentAnswers : {code}})
+      })
+      const result = await response.json();
+
+      if(!response.ok){
+        throw new Error (`Error status: ${response.status}`)
+      }
+      if (result.status == "received") {
+        setOutput(result.out || "");
+        setError(result.err || "");
+      }
     }
-  };
+    catch(error){
+        setError(error.message)
+    }
+
+
+  }
+
+
   
   return (
     <div>
@@ -49,7 +84,7 @@ const sendCodeSample = async () => {
         theme='vs-dark'
         onMount={handleEditorDidMount}
       />
-      <button onClick={sendCodeSample}>Run!</button>
+      <button onClick={handleRun}>Run!</button>
       <div style={{ 
         backgroundColor: "#1e1e1e", 
         color: "#d4d4d4", 

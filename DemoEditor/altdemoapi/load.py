@@ -45,7 +45,7 @@ class Config(Loader):
         self.db_set_up_path = None
 
     def load(self):
-        loaded_config: dict[str, Any] = self.load_file("config/errors.yaml")
+        loaded_config: dict[str, Any] = self.load_file("config/conf.yaml")
         config_fields = vars(self)
         for config, config_element in loaded_config.items():
             config_fields[config] = config_element
@@ -79,7 +79,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
 DB_DATABASE = os.getenv("DB_DATABASE")
 
-
+"""
 def increment_ai_samples():
     old_samples = CONFIG[CONFIG_TAGS.AI_SAMPLES]
     CONFIG[CONFIG_TAGS.AI_SAMPLES] += 1
@@ -88,6 +88,7 @@ def increment_ai_samples():
 
 def reset_ai_samples(num: int):
     CONFIG[CONFIG_TAGS.AI_SAMPLES] = num
+"""
 
 
 def dump_conf(spec_config=None):
