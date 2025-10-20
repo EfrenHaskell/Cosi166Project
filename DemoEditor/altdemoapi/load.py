@@ -2,6 +2,7 @@ import yaml
 import os
 from dotenv import load_dotenv
 from typing import Any
+import re
 
 
 class QueryTags:
@@ -29,6 +30,7 @@ class Errors(Loader):
         self.ai_response_format = None
         self.db_run_time = None
         self.db_set_up_exists = None
+        self.missing_param = None
 
     def load(self):
         loaded_errors: dict[str, Any] = self.load_file("config/errors.yaml")
@@ -52,23 +54,24 @@ class Config(Loader):
 
 
 class Query:
-    def __init__(self, name: str, query: str, params: list[str]):
+    def __init__(self, name: str, query: str):
         self.name = name
         self.query = query
+        self.params = re.findall(r"\{(.*)}", self.query)
 
-    def sql(self):
-        return
+    def to_sql(self, params: dict[str, Any]):
+        values = []
+        for param in self.params:
+            if param not in params:
+                raise Exception(f"ERRORS.missing_param {param}")
+            values.append(params[param])
+        re.sub(r"\{(.*)}", "%s", self.query)
+        return self.query, values
 
 
 class Queries(Loader):
     def __init__(self):
         pass
-
-    def load(self):
-        loaded_queries: dict[str, Any] = self.load_file("config/errors.yaml")
-        query_fields = vars(self)
-        for query, query_str in loaded_queries.items():
-            query_fields[query] = query_str
 
 
 ERRORS = Errors()
