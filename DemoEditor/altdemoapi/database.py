@@ -1,6 +1,7 @@
 import pymysql as sql
 import load
 import os
+from typing import Any
 
 
 class Database:
@@ -82,3 +83,13 @@ class Database:
             database=load.DB_DATABASE
         )
 
+    def execute(self, query: load.Query, params: dict[str, Any], fetch_one: bool = False, commit: bool = False):
+        try:
+            sql_query, param_list = query.to_sql(params)
+            self.cursor.execute(sql_query, param_list or ())
+            if commit:
+                self.conn.commit()
+            return self.cursor.fetchone() if fetch_one else self.cursor.fetchall()
+        except sql.Error as e:
+            self.conn.rollback()
+            raise RuntimeError(f"Database query failed: {e}")

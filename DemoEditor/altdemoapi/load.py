@@ -79,7 +79,6 @@ CONFIG = Config()
 QUERIES = Queries()
 ERRORS.load()
 CONFIG.load()
-QUERIES.load()
 
 load_dotenv()
 OPEN_AI_API_KEY = os.getenv("OPEN_AI_API_KEY")
