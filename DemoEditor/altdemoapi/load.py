@@ -51,26 +51,32 @@ class Config(Loader):
             config_fields[config] = config_element
 
 
-class Query(Loader):
-    pass
+class Query:
+    def __init__(self, name: str, query: str, params: list[str]):
+        self.name = name
+        self.query = query
+
+    def sql(self):
+        return
 
 
-# def load_queries():
-#     query_dir: str = "config/queries"
-#     queries = {}
-#     for query_file in os.listdir(query_dir):
-#         new_queries = load(f"{query_dir}/{query_file}")
-#         for key in new_queries:
-#             queries[key] = new_queries[key]
-#     return queries
+class Queries(Loader):
+    def __init__(self):
+        pass
+
+    def load(self):
+        loaded_queries: dict[str, Any] = self.load_file("config/errors.yaml")
+        query_fields = vars(self)
+        for query, query_str in loaded_queries.items():
+            query_fields[query] = query_str
 
 
-# meta
 ERRORS = Errors()
 CONFIG = Config()
-# QUERY = load_queries()
+QUERIES = Queries()
 ERRORS.load()
 CONFIG.load()
+QUERIES.load()
 
 load_dotenv()
 OPEN_AI_API_KEY = os.getenv("OPEN_AI_API_KEY")

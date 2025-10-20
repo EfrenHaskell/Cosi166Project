@@ -82,5 +82,3 @@ class Database:
             database=load.DB_DATABASE
         )
 
-    def query(self, query_str: str):
-        pass
