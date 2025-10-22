@@ -37,26 +37,28 @@ export default function StudentMode(){
 
     if (loading) {
         return (
-            <div className="student-mode">
-                <h3>Student Mode</h3>
+            <div className="content-card">
+                <h2>Student Mode</h2>
                 <div>Loading question...</div>
             </div>
         );
     }
 
     return(
-        <div className="student-mode">
-            <h3>Student Mode</h3>
+        <div className="content-card">
+            <h2>Student Mode</h2>
             {teacherQuestion ? 
-            (<div> 
-                <p>{teacherQuestion}</p>
-                <button onClick={handleRefresh}>Refresh Question</button>
+            (<div style={{ width: '100%', textAlign: 'center', marginBottom: '1.2rem' }}> 
+                <p style={{ fontSize: '1.15rem', fontWeight: 'normal' }}>{teacherQuestion}</p>
+                <button style={{ marginBottom: '1rem' }} onClick={handleRefresh}>🔄 Refresh Question</button>
             </div>) : 
-            (<div>
-                No question asked yet
-                <button onClick={handleRefresh}>Check for Questions</button>
+            (<div style={{ width: '100%', textAlign: 'center', marginBottom: '1.2rem' }}>
+                <p>No question asked yet</p>
+                <button style={{ marginBottom: '1rem' }} onClick={handleRefresh}>📋 Check for Questions</button>
             </div>)}
-            <CodeEditor prompt={teacherQuestion}/>
+            <div style={{ width: '100%', marginBottom: '1.5rem' }}>
+                <CodeEditor prompt={teacherQuestion}/>
+            </div>
         </div>
     );
 }

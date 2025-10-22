@@ -9,7 +9,7 @@ import MainNotes from "./components/MainNotes";
 import Sidebar from "./components/Sidebar";
 import DarkLightTheme from "./components/DarkLightTheme";
 import LoginPage from "./components/LoginPage";
-import UserProfile from "./components/UserProfile";
+// import UserProfile from "./components/UserProfile";
 
 function App() {
   const { user, loading, isAuthenticated } = useAuth();
