@@ -78,12 +78,16 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
               placeholder="Enter question here"
               onChange={(e) => setInputValue(e.target.value)}
             />
-            <button type="submit">Submit</button>
+            <button type="submit">✅ Submit</button>
           </form>
 
-          <div className = 'display-Student-Answers'>
-            <button onClick={fetchStudentAnswers} disabled={loadingAnswer}>
-                {loadingAnswer ? 'Loading...' : 'Get student answers'}
+          <div className='display-Student-Answers'>
+            <button 
+              onClick={fetchStudentAnswers} 
+              disabled={loadingAnswer}
+              style={{ marginTop: '2rem' }}
+            >
+              {loadingAnswer ? 'Loading...' : '📋 Get student answers'}
             </button>
             {studentResponse.length > 0 && (
               <div>
