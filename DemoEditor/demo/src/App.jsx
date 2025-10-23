@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import "./App.css";
-import GoogleLogin from "./components/GoogleLogin";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Login from "./components/Login";
 import TeacherMode from "./components/TeacherMode";
@@ -8,8 +7,6 @@ import StudentMode from "./components/StudentMode";
 import MainNotes from "./components/MainNotes";
 import Sidebar from "./components/Sidebar";
 import DarkLightTheme from "./components/DarkLightTheme";
-import LoginPage from "./components/LoginPage";
-// import UserProfile from "./components/UserProfile";
 
 function App() {
   const { user, loading, isAuthenticated } = useAuth();
