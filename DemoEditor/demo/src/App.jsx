@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "./App.css";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { useAuth } from "./contexts/AuthContext";
 import Login from "./components/Login";
 import TeacherMode from "./components/TeacherMode";
 import StudentMode from "./components/StudentMode";
@@ -9,7 +9,7 @@ import Sidebar from "./components/Sidebar";
 import DarkLightTheme from "./components/DarkLightTheme";
 
 function App() {
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading, isAuthenticated, logout } = useAuth();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userType, setUserType] = useState("student");
   const [teacherMode, setTeacherMode] = useState(false);
@@ -58,9 +58,16 @@ function App() {
         setTeacherMode(false)
   };
 
+  if (loading) {
+    return (
+      <>
+        <p>Loading...</p>
+      </>
+    );
+  }
   return (
     <>
-      {!isLoggedIn ? (
+      {!(isAuthenticated || isLoggedIn) ? (
         <>
 
           {<Login onLogin={handleLogin} />}
@@ -70,27 +77,19 @@ function App() {
         <DarkLightTheme/>
 
         {/* need to make this its own component too lazy lol*/}
-        <button className = "log-out-button" onClick = {handleLogOut}> Log Out </button>
-
+        <button className = "log-out-button" onClick = {() => { handleLogOut(); logout(); }}> Log Out </button>
 
         {teacherMode ? (
-          
           <TeacherMode teacherMode={teacherMode} setTeacherMode={setTeacherMode}/>
         ) : (
 
           <StudentMode/>
-
         )
         }
-
         </>
-
-
-
       )}
     </>
   );
 }
-
 
 export default App;

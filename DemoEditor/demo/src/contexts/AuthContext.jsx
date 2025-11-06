@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authService } from '../services/authService';
 
 const AuthContext = createContext();
 
@@ -17,44 +16,19 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Check if user is already logged in
+    // Check if user is already logged in (using simple token check)
     const token = localStorage.getItem('authToken');
     if (token) {
-      authService.getCurrentUser()
-        .then(userData => {
-          setUser(userData);
-          setIsAuthenticated(true);
-        })
-        .catch(() => {
-          // Token is invalid, remove it
-          localStorage.removeItem('authToken');
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
-      setLoading(false);
+      // Simple authentication - just check if token exists
+      setIsAuthenticated(true);
     }
+    setLoading(false);
   }, []);
 
-  const login = async (googleToken) => {
-    try {
-      setLoading(true);
-      const response = await authService.googleLogin(googleToken);
-      
-      // Store the JWT token
-      localStorage.setItem('authToken', response.access_token);
-      
-      setUser(response.user);
-      setIsAuthenticated(true);
-      
-      return response;
-    } catch (error) {
-      console.error('Login failed:', error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
+  const login = async () => {
+    // Placeholder for future login implementation
+    // For now, just set loading to false
+    setLoading(false);
   };
 
   const logout = () => {
@@ -64,12 +38,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUserRole = async (newRole) => {
-    try {
-      await authService.updateRole(newRole);
+    // Placeholder for future role update implementation
+    if (user) {
       setUser(prev => ({ ...prev, role: newRole }));
-    } catch (error) {
-      console.error('Role update failed:', error);
-      throw error;
     }
   };
 

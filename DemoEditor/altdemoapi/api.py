@@ -5,15 +5,12 @@
 __authors__ = ""
 
 import ai_utils
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import subprocess
 import re
 from session import Session
-from auth import oauth_service, user_service
-from pydantic import BaseModel
-from typing import Optional
+import uuid
 
 api = FastAPI()
 # add CORS handling to deal with restricted transaction origin
@@ -21,60 +18,23 @@ api.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
                    allow_headers=["*"])
 
 curr_session = Session()
-new_agent = ai_utils.Agent()
+# Lazy initialization of agent - only create when needed
+new_agent = None
 
-# Security
-security = HTTPBearer()
+def get_agent():
+    """Lazy initialization of AI agent"""
+    global new_agent
+    if new_agent is None:
+        new_agent = ai_utils.Agent()
+    return new_agent
+
+# Dictionary to store questions with their IDs
+questions = {}  # {question_id: {"prompt": str, "answers": [str]}}
 
 # Separate sessions for problems and student answers
 problem_session = Session()
-student_answer_session = Session()
 
 
-# Pydantic models for OAuth
-class GoogleTokenRequest(BaseModel):
-    token: str
-
-
-class AuthResponse(BaseModel):
-    access_token: str
-    user: dict
-
-
-class UserResponse(BaseModel):
-    user_id: int
-    email: str
-    name: str
-    role: str
-    picture_url: Optional[str] = None
-
-
-class RoleUpdateRequest(BaseModel):
-    role: str
-
-
-# Dependency for getting current user
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Get current authenticated user from JWT token"""
-    try:
-        token = credentials.credentials
-        payload = oauth_service.verify_jwt_token(token)
-        user = user_service.get_user_by_id(payload["user_id"])
-        
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found"
-            )
-        
-        return user
-    except HTTPException:
-        raise
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials"
-        )
 
 
 def _clean_extra_nl(lines: str):
@@ -139,8 +99,23 @@ def create_problem(new_prompt: dict):
     :param new_prompt:
     :return:
     """
-    problem_session.queue_prompt(new_prompt["prompt"])
-    return {"status": "received"}
+    prompt = new_prompt["prompt"]
+    question_id = str(uuid.uuid4())
+    
+    # Store question with ID
+    questions[question_id] = {
+        "prompt": prompt,
+        "answers": []
+    }
+    
+    print(f"Created new question with ID: {question_id}")
+    print(f"Question prompt: {prompt}")
+    print(f"Total questions in system: {len(questions)}")
+    
+    # Also queue for students to fetch
+    problem_session.queue_prompt(prompt)
+    
+    return {"status": "received", "question_id": question_id}
 
 
 @api.get("/api/getProblem")
@@ -165,106 +140,132 @@ def create_student_answers(code: dict):
     :param code:
     :return:
     """
-    # Extract the code from the nested structure
-    student_code = code['studentAnswers']['code']
-    student_answer_session.queue_prompt(student_code)
-    return {'status': 'received'}
+    try:
+        # Extract the code and prompt from the nested structure
+        if 'studentAnswers' not in code:
+            print("ERROR: Missing 'studentAnswers' key in request")
+            return {'status': 'error', 'message': 'Invalid request format: missing studentAnswers'}
+        
+        student_code = code['studentAnswers'].get('code', '')
+        prompt = code['studentAnswers'].get('prompt', '')
+        
+        if not student_code:
+            print("ERROR: No student code provided")
+            return {'status': 'error', 'message': 'No code provided'}
+        
+        if not prompt:
+            print("ERROR: No prompt provided")
+            return {'status': 'error', 'message': 'No prompt provided'}
+        
+        print(f"=== POST /api/studentAnswers ===")
+        print(f"Received student answer")
+        print(f"Prompt: '{prompt}'")
+        print(f"Code length: {len(student_code)}")
+        print(f"Current questions in system: {len(questions)}")
+        for qid, q_data in questions.items():
+            print(f"  - {qid[:8]}...: '{q_data['prompt']}'")
+        
+        # Find the question that matches this prompt (normalize whitespace for matching)
+        question_id = None
+        normalized_prompt = prompt.strip()
+        
+        for qid, q_data in questions.items():
+            normalized_stored = q_data["prompt"].strip()
+            # Exact match first, then try normalized comparison
+            if q_data["prompt"] == prompt or normalized_stored == normalized_prompt:
+                question_id = qid
+                print(f"✓ Found matching question with ID: {question_id}")
+                break
+        
+        # If question found, add answer to it
+        if question_id:
+            questions[question_id]["answers"].append(student_code)
+            answer_count = len(questions[question_id]["answers"])
+            print(f"✓ Added answer to question {question_id}")
+            print(f"✓ Total answers for this question: {answer_count}")
+            return {
+                'status': 'received', 
+                'question_id': question_id, 
+                'answer_count': answer_count,
+                'message': 'Answer submitted successfully'
+            }
+        else:
+            # If no matching question found, create a new one or return error
+            print(f"✗ ERROR: No matching question found for prompt: '{prompt}'")
+            print(f"Available prompts: {[q_data['prompt'] for q_data in questions.values()]}")
+            return {
+                'status': 'error', 
+                'message': f'No matching question found for this prompt. Make sure the question exists.'
+            }
+    except Exception as e:
+        print(f"✗ EXCEPTION in create_student_answers: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {'status': 'error', 'message': f'Server error: {str(e)}'}
 
 
 @api.get('/api/getStudentAnswers')
 def get_student_answers():
     """
-    Route to retrieve student answers
+    Route to retrieve all questions and their student answers
     to be displayed for the teacher
     :return:
     """
+    # Return all questions with their answers (sorted by creation order - newest first)
+    questions_data = []
+    for question_id, question_data in questions.items():
+        answer_list = question_data["answers"]
+        questions_data.append({
+            "question_id": question_id,
+            "prompt": question_data["prompt"],
+            "answers": answer_list.copy() if isinstance(answer_list, list) else [],  # Return a copy to avoid reference issues
+            "answer_count": len(answer_list) if isinstance(answer_list, list) else 0
+        })
     
-    if student_answer_session.has_prompt():
-        answer = student_answer_session.pop_prompt()
-        return {'status': 'answers found', 'answer' : answer}
-    else:
-        return {'status': 'answer not found'}
-
-
-# OAuth Authentication Endpoints
-
-@api.post("/api/auth/google", response_model=AuthResponse)
-async def google_auth(request: GoogleTokenRequest):
-    """
-    Authenticate user with Google OAuth token
-    """
-    try:
-        # Verify Google token
-        google_user_info = await oauth_service.verify_google_token(request.token)
-        
-        # Create or update user in database
-        user_info = user_service.create_or_update_user(google_user_info)
-        
-        # Create JWT token
-        jwt_token = oauth_service.create_jwt_token(
-            user_info["user_id"],
-            user_info["email"],
-            user_info["role"]
-        )
-        
-        return AuthResponse(
-            access_token=jwt_token,
-            user=user_info
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Authentication failed: {str(e)}"
-        )
-
-
-@api.get("/api/auth/me", response_model=UserResponse)
-async def get_current_user_info(current_user: dict = Depends(get_current_user)):
-    """
-    Get current authenticated user information
-    """
-    return UserResponse(**current_user)
-
-
-@api.put("/api/auth/role")
-async def update_user_role(
-    request: RoleUpdateRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    Update user role (teacher/student)
-    """
-    success = user_service.update_user_role(current_user["user_id"], request.role)
+    print(f"=== GET /api/getStudentAnswers ===")
+    print(f"Total questions in backend: {len(questions)}")
+    print(f"Returning {len(questions_data)} questions with answers")
+    for q in questions_data:
+        print(f"  Question ID: {q['question_id'][:8]}...")
+        print(f"    Prompt: {q['prompt'][:50]}...")
+        print(f"    Answers: {q['answer_count']} answers")
+        if q['answer_count'] > 0:
+            for i, ans in enumerate(q['answers'][:3]):  # Show first 3 answers
+                print(f"      Answer {i+1}: {str(ans)[:50]}...")
     
-    if success:
-        return {"message": "Role updated successfully", "new_role": request.role}
+    return {'status': 'success', 'questions': questions_data}
+
+@api.get('/api/getStudentAnswers/{question_id}')
+def get_student_answers_by_question(question_id: str):
+    """
+    Route to retrieve student answers for a specific question
+    :param question_id:
+    :return:
+    """
+    if question_id in questions:
+        return {
+            'status': 'success',
+            'question_id': question_id,
+            'prompt': questions[question_id]["prompt"],
+            'answers': questions[question_id]["answers"]
+        }
     else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid role or update failed"
-        )
+        return {'status': 'error', 'message': 'Question not found'}
 
-
-@api.post("/api/auth/logout")
-async def logout(current_user: dict = Depends(get_current_user)):
+@api.delete('/api/deleteQuestion/{question_id}')
+def delete_question(question_id: str):
     """
-    Logout user (client should remove token)
+    Route to delete a question and all its answers
+    :param question_id:
+    :return:
     """
-    return {"message": "Logged out successfully"}
+    if question_id in questions:
+        deleted_prompt = questions[question_id]["prompt"]
+        del questions[question_id]
+        print(f"Deleted question {question_id} with prompt: '{deleted_prompt}'")
+        print(f"Remaining questions: {len(questions)}")
+        return {'status': 'success', 'message': 'Question deleted successfully'}
+    else:
+        return {'status': 'error', 'message': 'Question not found'}
 
 
-# Protected routes that require authentication
-
-@api.get("/api/protected/test")
-async def protected_test(current_user: dict = Depends(get_current_user)):
-    """
-    Test endpoint for protected routes
-    """
-    return {
-        "message": "This is a protected route",
-        "user": current_user["name"],
-        "role": current_user["role"]
-    }

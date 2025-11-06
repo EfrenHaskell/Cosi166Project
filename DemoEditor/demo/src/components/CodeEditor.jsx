@@ -44,22 +44,51 @@ export default function CodeEditor({ prompt }) {
   // sends student code to new api endpoint /studentAnswers
   const sendStudentCode = async () => {
     const code = getEditorValue();
+    if (!code || !code.trim()) {
+      console.warn('No code to submit');
+      return;
+    }
+    
+    if (!prompt || !prompt.trim()) {
+      console.warn('No prompt available - cannot submit answer');
+      return;
+    }
+    
+    console.log('Submitting student answer...');
+    console.log('Prompt:', prompt);
+    console.log('Code length:', code.length);
+    
     try {
       const response = await fetch('http://localhost:9000/api/studentAnswers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentAnswers: { code } }),
+        body: JSON.stringify({ studentAnswers: { code, prompt } }),
       });
+      
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
       const result = await response.json();
+      console.log('Response result:', result);
+      
       if (!response.ok) {
-        throw new Error(`Error status: ${response.status}`);
+        throw new Error(result.message || `Error status: ${response.status}`);
       }
-      if (result.status === "received") {
-        setOutput(result.out || "");
-        setError(result.err || "");
+      
+      if (result.status === "received" || result.status === "success") {
+        console.log('✅ Student answer submitted successfully!');
+        console.log('Question ID:', result.question_id);
+        console.log('Answer count:', result.answer_count);
+      } else if (result.status === "error") {
+        console.error('❌ Student answer submission failed:', result.message);
+        setError(result.message || 'Failed to submit answer');
+      } else {
+        console.log('Student answer response:', result);
       }
     } catch (error) {
-      setError(error.message);
+      console.error('❌ Failed to submit student answer:', error);
+      console.error('Error details:', error.message);
+      setError(error.message || 'Failed to submit student answer');
     }
   };
 
