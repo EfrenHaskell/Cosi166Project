@@ -121,8 +121,16 @@ class ResponseTemplate:
                 else:
                     curr_section.append(line)
 
+    def skill_list(self):
+        return ",\n".join(self.skill_section.internal)
+
     def default_message(self, line):
         self.problem_section.append(line)
+
+
+class FormatTemplate:
+    def __init__(self, text: str):
+        self.text = text
 
 
 class Agent:
@@ -157,27 +165,42 @@ class Agent:
     def _exists(path: str) -> bool:
         return os.path.exists(path)
 
-    def make_request(self, prompt: str, code_sample: str, language: str, debug_path=None) -> str:
+    def code_check(self, prompt: str, code_sample: str, language: str, debug_path=None) -> str:
+        return self.make_request(instructions=f"You are a coding assistant, {self.ai_context}",
+                                 input_value=f"""I was asked to write code that behaves as follows:\n{prompt}\n
+                                      can you {self.ai_context}, my {language} code:\n{code_sample}""",
+                                 debug_path=debug_path)
+
+    def generate_skills(self, skills, debug_path=None):
+        context = """
+        The following inputs take the form:
+        index1 {
+            //list of skills
+        },
+        ...
+        indexn {
+            //list of skills
+        }
+        
+        The output should be of form:
+        Category {
+            //all indexes with skills that fit the category
+        }
+        """
+        return self.make_request(instructions=f"You are a categorizing agent\n{context}",
+                                 input_value=f"""Group the following into categories based on skill similarity,
+                                                using the input, output requirements:
+                                                {skills}""",
+                                 debug_path=debug_path)
+
+    def make_request(self, instructions, input_value, debug_path=None) -> str:
         """
         Make request to OpenAI API.
-
-        Parameters
-        ----------
-        prompt: str
-            The professor's question prompt
-        code_sample: str
-            The code submitted by the student
-        language: str
-            The programming language code was written in
-        debug_path: str | None
-            The path for debug file to be written to (default is None)
-
         """
         response = self.client.responses.create(
             model="gpt-4o",
-            instructions=f"You are a coding assistant, {self.ai_context}",
-            input=f"""I was asked to write code that behaves as follows:\n{prompt}\n
-            can you {self.ai_context}, my {language} code:\n{code_sample}"""
+            instructions=instructions,
+            input=input_value
         )
         text = response.output_text
         if debug_path:
@@ -196,16 +219,33 @@ class Agent:
         return os.sep.join([test_path, file_nm]) + ".txt"
 
     @staticmethod
-    def parse_response(text) -> ResponseTemplate:
+    def parse_response(text) -> str | ResponseTemplate:
         """
         Parse response via ResponseTemplate
 
         :param text:
         :return:
         """
-        parse_template = ResponseTemplate(text)
         if text == "correct":
-            parse_template.default_message("Good Job!")
+            return "Good Job!"
         else:
+            parse_template = ResponseTemplate(text)
             parse_template.str_to_template()
         return parse_template
+
+    def run_checker(self, prompt: str, code_sample: str, language: str, debug_path=None) -> str | ResponseTemplate:
+        output = self.code_check(prompt, code_sample, language, debug_path)
+        return self.parse_response(output)
+
+    @staticmethod
+    def __build_conf(skill_map: dict[str, str]):
+        conf = ""
+        for index, skills in skill_map.items():
+            conf += "index: " + index + "{\n" + skills + "}\n"
+        return conf
+
+    def culminate_all(self, skill_map: dict[str, str], debug_path=None):
+        return self.generate_skills(self.__build_conf(skill_map), debug_path)
+
+    def run_skill_generator(self, skill_map: dict[str, str], debug_path=None):
+        output = self.culminate_all(skill_map, debug_path)
