@@ -71,7 +71,7 @@ class Query:
 
 class Queries(Loader):
     def __init__(self):
-        pass
+        self.test_query = "SELECT * FROM {table};"
 
 
 ERRORS = Errors()
