@@ -2,7 +2,7 @@ import {useState, useEffect, use} from 'react';
 
 export default function DarkLightTheme(){
     
-    //need to start chaging colors of buttons other objects etc
+    //need to fix input colors too 
 
 
     const [backgroundColor, setBackgroundColor] = useState('white') 

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "./App.css";
-import { useAuth } from "./contexts/AuthContext";
+//import { GoogleLogin } from "@react-oauth/google";
 import Login from "./components/Login";
 import TeacherMode from "./components/TeacherMode";
 import StudentMode from "./components/StudentMode";
@@ -9,7 +9,7 @@ import Sidebar from "./components/Sidebar";
 import DarkLightTheme from "./components/DarkLightTheme";
 
 function App() {
-  const { user, loading, isAuthenticated, logout } = useAuth();
+  //const { user, loading, isAuthenticated, logout } = useAuth();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userType, setUserType] = useState("student");
   const [teacherMode, setTeacherMode] = useState(false);
@@ -58,26 +58,35 @@ function App() {
         setTeacherMode(false)
   };
 
-  if (loading) {
-    return (
-      <>
-        <p>Loading...</p>
-      </>
-    );
-  }
+  const handleGoogleLogin = (decodedToken) => {
+    // Extract user information from Google token
+    const email = decodedToken.email;
+    const name = decodedToken.name;
+    
+    // For now, we'll log them in as a student by default
+    // You can customize this logic based on your needs
+    setTeacherMode(false);
+    setIsLoggedIn(true);
+    setUserType("student");
+    
+    console.log("Google login successful:", { email, name });
+  };
+
+
   return (
     <>
-      {!(isAuthenticated || isLoggedIn) ? (
+      {!( isLoggedIn) ? (
         <>
 
-          {<Login onLogin={handleLogin} />}
+          {<Login onLogin={handleLogin} onGoogleLogin={handleGoogleLogin} />}
+          
         </>
       ) : (
         <>
         <DarkLightTheme/>
 
         {/* need to make this its own component too lazy lol*/}
-        <button className = "log-out-button" onClick = {() => { handleLogOut(); logout(); }}> Log Out </button>
+        <button className = "log-out-button" onClick = {handleLogOut}> Log Out </button>
 
         {teacherMode ? (
           <TeacherMode teacherMode={teacherMode} setTeacherMode={setTeacherMode}/>
