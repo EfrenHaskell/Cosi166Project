@@ -1,45 +1,208 @@
-import React, { useState, useEffect } from "react"; 
+import React, { useState, useEffect } from "react";
 import CodeEditor from "./CodeEditor";
+import TimedCodeEditor from "./TimedCodeEditor";
 
 
-export default function StudentMode(){
+
+export default function StudentMode() {
 
     const [teacherQuestion, setTeacherQuestion] = useState("");
     const [questionId, setQuestionId] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    const [timeLimit, setTimeLimit] = useState(null);
+    const [timeLeft, setTimeLeft] = useState(null);
+    const [showWarning, setShowWarning] = useState(false);
+
+    const [studentCode, setStudentCode] = useState("");
+    const [hasSubmitted, setHasSubmitted] = useState(false);
+    const [showTimedModal, setShowTimedModal] = useState(false);
+    const [pendingQuestion, setPendingQuestion] = useState(null);
+    const [pendingDuration, setPendingDuration] = useState(null);
 
     useEffect(() => {
         fetchProblem();
     }, []);
 
     const fetchProblem = async () => {
-        
         try {
             setLoading(true);
-            const response = await fetch('http://localhost:9000/api/getProblem');
+            const response = await fetch("http://localhost:8000/api/peekProblem");
             const result = await response.json();
-            console.log('Fetched problem:', result);
-            
+            console.log("Peeked problem:", result);
+
             if (result.status !== "queue empty") {
-                setTeacherQuestion(result.prompt);
-                setQuestionId(result.question_id || null);
-                console.log('Question ID:', result.question_id);
+                const duration = result.duration;
+                console.log("Time (seconds):", duration);
+
+                if (duration != null && duration > 0) {
+                    setPendingQuestion(result.prompt);
+                    setPendingDuration(duration);
+                    // reset submission state for the new incoming timed quiz
+                    setHasSubmitted(false);
+                    setShowTimedModal(true);
+                } else {
+                    await fetch("http://localhost:8000/api/getProblem");
+
+                    setTeacherQuestion(result.prompt);
+                    setTimeLimit(null);
+                    setTimeLeft(null);
+                    setShowWarning(false);
+
+                    setPendingQuestion(null);
+                    setPendingDuration(null);
+                    setShowTimedModal(false);
+                }
             } else {
                 setTeacherQuestion("");
-                setQuestionId(null);
+                setTimeLimit(null);
+                setTimeLeft(null);
+                setShowWarning(false);
+                setPendingQuestion(null);
+                setPendingDuration(null);
+                setShowTimedModal(false);
             }
         } catch (error) {
-            console.error('Failed to fetch problem:', error);
+            console.error("Failed to fetch problem:", error);
             setTeacherQuestion("");
-            setQuestionId(null);
+            setTimeLimit(null);
+            setTimeLeft(null);
+            setShowWarning(false);
+            setPendingQuestion(null);
+            setPendingDuration(null);
+            setShowTimedModal(false);
         } finally {
             setLoading(false);
         }
     };
 
-    // Fetch the latest question from the backend
+    const handleStartQuiz = async () => {
+        if (!pendingQuestion) return;
+
+        await fetch("http://localhost:8000/api/getProblem");
+
+        setTeacherQuestion(pendingQuestion);
+
+        // new quiz started — ensure submission state is reset
+        setHasSubmitted(false);
+
+        if (pendingDuration != null) {
+            setTimeLimit(pendingDuration);
+            setTimeLeft(pendingDuration);
+            setShowWarning(false);
+        } else {
+            setTimeLimit(null);
+            setTimeLeft(null);
+            setShowWarning(false);
+        }
+
+        setPendingQuestion(null);
+        setPendingDuration(null);
+    };
+
+    const handleCancelQuiz = () => {
+        setShowTimedModal(false);
+        setPendingQuestion(null);
+        setPendingDuration(null);
+    };
+
+    const submitAnswer = async (codeArg) => {
+        if (hasSubmitted) return;
+
+        const codeToSend =
+            codeArg !== undefined && codeArg !== null ? codeArg : (studentCode ?? "");
+
+        console.log("Submitting student answer length:", (codeToSend || "").length);
+
+        try {
+            const res = await fetch("http://localhost:8000/api/studentAnswers", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    studentAnswers: {
+                        code: codeToSend,
+                    },
+                }),
+            });
+
+            console.log("Submit HTTP status:", res.status, "ok:", res.ok);
+            let data = null;
+            try {
+                data = await res.json();
+            } catch (parseErr) {
+                const text = await res.text();
+                console.warn("Failed to parse JSON response from /api/studentAnswers, raw text:", text, parseErr);
+                data = { raw: text };
+            }
+
+            console.log("Answer submit response:", data);
+
+            if (res.ok) {
+                setHasSubmitted(true);
+                alert("Your answer has been submitted.");
+                setShowTimedModal(false);
+            } else {
+                alert("Submission failed. Check console and try again.");
+            }
+        } catch (err) {
+            console.error("Failed to submit student answer:", err);
+            alert("Failed to submit your answer. Please try again.");
+        }
+        setTeacherQuestion("");
+    };
+
+
     const handleRefresh = () => {
         fetchProblem();
+    };
+
+    const handleTimesUp = () => {
+        console.log("⏰ Time is up!");
+        if (!hasSubmitted) {
+            console.log("handleTimesUp: calling submitAnswer with current studentCode length:", (studentCode || "").length);
+            submitAnswer(studentCode);
+            setShowTimedModal(false);
+        } else {
+            console.log("handleTimesUp: already submitted, skipping submit.");
+            setShowTimedModal(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!teacherQuestion || timeLimit == null) {
+            return;
+        }
+
+        const intervalId = setInterval(() => {
+            setTimeLeft((prev) => {
+                if (prev == null) return prev;
+
+                const next = prev - 1;
+
+                if (next === 60) {
+                    setShowWarning(true);
+                }
+
+                if (next <= 0) {
+                    clearInterval(intervalId);
+                    handleTimesUp();
+                    return 0;
+                }
+
+                return next;
+            });
+        }, 1000);
+
+        return () => clearInterval(intervalId);
+    }, [teacherQuestion, timeLimit, hasSubmitted]);
+
+    const formatTime = (secs) => {
+        if (timeLimit == null) return "Unlimited";
+        if (secs == null) return "--:--";
+
+        const m = Math.floor(secs / 60);
+        const s = secs % 60;
+        return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
     };
 
     if (loading) {
@@ -51,21 +214,160 @@ export default function StudentMode(){
         );
     }
 
-    return(
+    return (
+
         <div className="content-card">
+            {showTimedModal && (
+                <div
+                    className="modal-backdrop"
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        background: "rgba(0,0,0,0.4)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: 1000,
+                    }}
+                >
+                    <div
+                        className="modal"
+                        style={{
+                            background: "#fff",
+                            borderRadius: "12px",
+                            padding: "1.5rem 1.75rem 1.25rem",
+                            maxWidth: "1000px",
+                            width: "90vw",
+                            maxHeight: "90vh",
+                            display: "flex",
+                            flexDirection: "column",
+                            position: "relative",
+                            overflow: "hidden",
+                        }}
+                    >
+                        <button
+                            onClick={() => setShowTimedModal(false)}
+                            style={{
+                                position: "absolute",
+                                top: "0.75rem",
+                                left: "50%",
+                                transform: "translateX(-50%)",
+                                border: "none",
+                                background: "transparent",
+                                fontSize: "1.1rem",
+                                cursor: "pointer",
+                                padding: "0.25rem 0.75rem",
+                                borderRadius: "999px",
+                                backgroundColor: "#727064",
+                            }}
+                        >
+                            Close quiz
+                        </button>
+
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: "1rem",
+                            }}
+                        >
+                            <h3 style={{ margin: 0 }}>Timed Quiz</h3>
+                            <div>Time left: {formatTime(timeLeft)}</div>
+                        </div>
+
+                        {pendingQuestion ? (
+                            <>
+                                {pendingDuration != null && (
+                                    <p style={{ marginBottom: "0.75rem" }}>
+                                        Time limit:{" "}
+                                        <strong>
+                                            {Math.max(1, Math.round(pendingDuration / 60))} minute
+                                            {Math.round(pendingDuration / 60) !== 1 ? "s" : ""}
+                                        </strong>
+                                    </p>
+                                )}
+                                <p style={{ fontSize: "0.95rem", marginBottom: "1rem" }}>
+                                    When you click <strong>Start Quiz</strong>, the question will appear
+                                    and the timer will begin.
+                                </p>
+
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        justifyContent: "flex-end",
+                                        gap: "0.5rem",
+                                    }}
+                                >
+                                    <button
+                                        id="not-now-button"
+                                        onClick={handleCancelQuiz}>
+                                        Not now
+                                    </button>
+                                    <button onClick={handleStartQuiz} style={{ fontWeight: 600, backgroundColor: "#727064" }}>
+                                        Start Quiz
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                {showWarning && timeLimit != null && (
+                                    <div
+                                        style={{
+                                            backgroundColor: "#ffc107",
+                                            padding: "0.5rem 1rem",
+                                            borderRadius: "6px",
+                                            marginBottom: "0.75rem",
+                                            textAlign: "center",
+                                            fontWeight: 600,
+                                        }}
+                                    >
+                                        ⏰ Only 1 minute left!
+                                    </div>
+                                )}
+
+                                <p
+                                    style={{
+                                        fontSize: "1.1rem",
+                                        fontWeight: "normal",
+                                        marginBottom: "1rem",
+                                        textAlign: "center",
+                                    }}
+                                >
+                                    {teacherQuestion}
+                                </p>
+
+                                <div style={{ flex: 1, overflow: "auto" }}>
+                                    <div style={{ height: "420px" }}>
+                                        <TimedCodeEditor
+                                            prompt={teacherQuestion}
+                                            onCodeChange={setStudentCode}
+                                            onSubmit={(code) => submitAnswer(code)}
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                    </div>
+                </div>
+            )}
+
             <h2>Student Mode</h2>
-            {teacherQuestion ? 
-            (<div style={{ width: '100%', textAlign: 'center', marginBottom: '1.2rem' }}> 
-                <p style={{ fontSize: '1.15rem', fontWeight: 'normal' }}>{teacherQuestion}</p>
-                <button style={{ marginBottom: '1rem' }} onClick={handleRefresh}>🔄 Refresh Question</button>
-            </div>) : 
-            (<div style={{ width: '100%', textAlign: 'center', marginBottom: '1.2rem' }}>
-                <p>No question asked yet</p>
-                <button style={{ marginBottom: '1rem' }} onClick={handleRefresh}>📋 Check for Questions</button>
-            </div>)}
-            <div style={{ width: '100%', marginBottom: '1.5rem' }}>
-                <CodeEditor prompt={teacherQuestion} questionId={questionId}/>
-            </div>
+            {teacherQuestion ?
+                (<div style={{ width: '100%', textAlign: 'center', marginBottom: '1.2rem' }}>
+                    <p style={{ fontSize: '1.15rem', fontWeight: 'normal' }}>{teacherQuestion}</p>
+                    <button id="refresh-question-button" style={{ marginBottom: '1rem' }} onClick={handleRefresh}>🔄 Refresh Question</button>
+                </div>) :
+                (<div style={{ width: '100%', textAlign: 'center', marginBottom: '1.2rem' }}>
+                    <p>No question asked yet</p>
+                    <button id="check-questions-button" style={{ marginBottom: '1rem' }} onClick={handleRefresh}>📋 Check for Questions</button>
+                </div>)}
+            {!showTimedModal && (
+                <div style={{ width: "100%", marginBottom: "1.5rem" }}>
+                    <CodeEditor prompt={teacherQuestion} />
+                </div>
+            )}
         </div>
     );
 }

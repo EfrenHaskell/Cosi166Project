@@ -105,7 +105,7 @@ export default function CodeEditor({ prompt, questionId }) {
           onMount={handleEditorDidMount}
           style={{ borderRadius: '10px', overflow: 'hidden', width: '100%', height: '100%' }}
         />
-  <button style={{ margin: '1rem 0', padding: '0.7rem 2.2rem', fontSize: '1.1rem', borderRadius: '8px', background: '#181818', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }} onClick={handleRun}>▶️ Run!</button>
+        <button style={{ margin: '1rem 0', padding: '0.7rem 2.2rem', fontSize: '1.1rem', borderRadius: '8px', background: '#727064', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }} onClick={handleRun}>▶️ Run!</button>
       </div>
       <div style={{ flex: 1, backgroundColor: '#1e1e1e', color: '#d4d4d4', padding: '18px 16px', fontFamily: 'monospace', borderRadius: '8px', overflowY: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', minHeight: '100%' }}>
         <h3 style={{ marginTop: 0 }}>Output</h3>

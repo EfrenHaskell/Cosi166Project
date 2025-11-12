@@ -5,6 +5,7 @@ const STORAGE_KEY = 'teacher_questions';
 
 export default function TeacherMode({ teacherMode, setTeacherMode}) {
   const [inputValue, setInputValue] = useState("");
+  const [duration, setDuration] = useState("");
   const [loadingAnswer, setLoadingAnswer] = useState(false);
   const [questions, setQuestions] = useState(() => {
     // Load from localStorage on mount
@@ -251,18 +252,34 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
   };
 
 
-  const handleSubmit =  async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const trimmed = inputValue.trim();
-    if (!trimmed) return;
+    const trimmedQuestion = inputValue.trim();
+    if (!trimmedQuestion) return;
+
+    const trimmedDuration = duration.trim();
+    let durationSeconds = null;
+
+    if (trimmedDuration !== "") {
+      const parsed = Number(trimmedDuration);
+      if (parsed < 0) {
+        alert("Please enter a non-negative number for duration.");
+        return;
+      }
+      durationSeconds = parsed * 60;
+    }
 
     try {
-      const response = await fetch('http://localhost:9000/api/createProblem', {
+      const body = { prompt: trimmedQuestion };
+      if (durationSeconds !== null) {
+        body.duration = durationSeconds;
+      }
+      const response = await fetch('http://localhost:8000/api/createProblem', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt: trimmed }),
+        body: JSON.stringify(body),
       });
       const result = await response.json();
       console.log('Problem submitted:', result);
@@ -292,6 +309,7 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
         });
         
         setInputValue("");
+        setDuration("");
         console.log("Problem sent to backend successfully");
         
         // Also refresh to get any server-side updates and sync
@@ -312,7 +330,7 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
 
 
       {teacherMode && (
-        
+
         <div>
           <h3>Teacher Mode</h3>
           <form className="questionForm" onSubmit={handleSubmit}>
@@ -322,12 +340,20 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
               placeholder="Enter question here"
               onChange={(e) => setInputValue(e.target.value)}
             />
-            <button type="submit">✅ Submit</button>
+            <input
+              className="teacherInput"
+              type="number"
+              value={duration}
+              placeholder="Duration (in minutes)"
+              onChange={(e) => setDuration(e.target.value)}
+            />
+            <button id="submit-button" type="submit">✅ Submit</button>
           </form>
 
           <div className='display-Student-Answers'>
-            <button 
-              onClick={fetchStudentAnswers} 
+            <button
+              id="get-student-answers-button"
+              onClick={fetchStudentAnswers}
               disabled={loadingAnswer}
               style={{ marginTop: '2rem', marginBottom: '1rem' }}
             >

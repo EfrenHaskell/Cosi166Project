@@ -1,26 +1,115 @@
 """
-
+API module for DemoEditor
 """
 
 __authors__ = ""
 
+import re
+import json
+import uuid
+import subprocess
+from typing import Dict, Optional
+
 import ai_utils
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import subprocess
-import re
+from pydantic import BaseModel
+
 from session import Session
-import uuid
+from redis_client import init_redis, close_redis
+from auth import oauth_service, user_service
+
+
+# --- Authentication helper models and dependency ---
+class UserResponse(BaseModel):
+    user_id: str
+    name: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[str] = None
+
+
+class RoleUpdateRequest(BaseModel):
+    role: str
+
+
+async def get_current_user(request: Request, authorization: Optional[str] = Header(None)) -> Dict:
+    """Resolve current user from available auth services or headers.
+    Tries in order:
+      - `oauth_service.get_current_user(request)` if available
+      - `user_service.get_user_from_token(token)` if available
+      - Headers `X-User-Id`, `X-User-Name`, `X-User-Email`, `X-User-Role`
+    Raises 401 if no user info could be found.
+    """
+    # Try oauth_service if it provides a resolver
+    try:
+        if oauth_service and hasattr(oauth_service, "get_current_user"):
+            user = await oauth_service.get_current_user(request)
+            if user:
+                return user
+    except Exception:
+        pass
+
+    # Try token-based lookup via user_service
+    token = None
+    if authorization and authorization.lower().startswith("bearer "):
+        token = authorization.split(" ", 1)[1]
+    try:
+        if token and user_service and hasattr(user_service, "get_user_from_token"):
+            user = await user_service.get_user_from_token(token)
+            if user:
+                return user
+    except Exception:
+        pass
+
+    # Fallback to headers set by a reverse proxy or dev environment
+    headers = request.headers
+    user_id = headers.get("x-user-id") or headers.get("x_user_id")
+    if user_id:
+        return {
+            "user_id": user_id,
+            "name": headers.get("x-user-name") or headers.get("x_user_name"),
+            "email": headers.get("x-user-email") or headers.get("x_user_email"),
+            "role": headers.get("x-user-role") or headers.get("x_user_role"),
+        }
+
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
 
 api = FastAPI()
+
+
+# Initialize Redis on startup and close on shutdown (if available)
+@api.on_event("startup")
+async def _startup():
+    try:
+        await init_redis(api)
+    except Exception as e:
+        # don't crash if redis is not available; fallback to in-memory session
+        print(f"Warning: failed to initialize redis: {e}")
+
+
+@api.on_event("shutdown")
+async def _shutdown():
+    try:
+        await close_redis(api)
+    except Exception:
+        pass
+
+
 # add CORS handling to deal with restricted transaction origin
-api.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"],
-                   allow_headers=["*"])
+api.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 curr_session = Session()
 # Lazy initialization of agent - only create when needed
 new_agent = None
+
 
 def get_agent():
     """Lazy initialization of AI agent"""
@@ -29,13 +118,14 @@ def get_agent():
         new_agent = ai_utils.Agent()
     return new_agent
 
+
 # Dictionary to store questions with their IDs
 questions = {}  # {question_id: {"prompt": str, "answers": [str]}}
 
 # Separate sessions for problems and student answers
 problem_session = Session()
-
-
+# in-memory fallback for student answers when Redis isn't available
+student_answer_session = Session()
 
 
 def _clean_extra_nl(lines: str):
@@ -67,13 +157,6 @@ def run_sub_process(py_file) -> tuple:
     """
     Run resulting python file
     Returns stdout, stderr from execution
-
-    Parameters
-    ----------
-
-    Returns
-    -------
-
     """
     result = subprocess.run(f"python {py_file}", capture_output=True, text=True)
     return result.stdout, result.stderr
@@ -84,244 +167,248 @@ def submit_code(code: dict):
     """
     Route for code submission and execution
     Server gets code sample from front-end and returns output and error details
-    :param code:
-    :return:
     """
     raw_to_file(code["codeSample"])
     out, err = run_sub_process("test.py")
     return {"status": "received", "out": out, "err": err}
 
+@api.get("/api/peekProblem")
+async def peek_problem():
+    """
+    Look at the next problem WITHOUT removing it from the queue.
+    """
+    redis_client = getattr(api.state, "redis", None)
+    try:
+        if redis_client is not None:
+            # Look at the first item without popping
+            item = await redis_client.lindex("problems", 0)
+            if item is not None:
+                problem = json.loads(item) 
+                return {
+                    "status": "queue has element",
+                    "prompt": problem["prompt"],
+                    "duration": problem.get("duration"),
+                }
+            return {"status": "queue empty"}
+        else:
+            if problem_session.has_prompt():
+                problem = problem_session.peek_prompt()  # you implement this
+                return {
+                    "status": "queue has element",
+                    "prompt": problem["prompt"],
+                    "duration": problem.get("duration"),
+                }
+            else:
+                return {"status": "queue empty"}
+            
+    except Exception as e:
+        print(f"Redis read failed, falling back to in-memory queue: {e}")
+        if problem_session.has_prompt():
+            problem = problem_session.peek_prompt()
+            return {
+                "status": "queue has element",
+                "prompt": problem["prompt"],
+                "duration": problem.get("duration"),
+            }
+        else:
+            return {"status": "queue empty"}
+
 
 @api.put("/api/createProblem")
-def create_problem(new_prompt: dict):
+async def create_problem(new_prompt: dict):
     """
     Route for creating new practice problem
     Server gets problem prompt from front-end
-    :param new_prompt:
-    :return:
     """
-    prompt = new_prompt["prompt"]
+    # Accept optional duration and create a question id so frontend can track it
+    prompt = new_prompt.get("prompt") if isinstance(new_prompt, dict) else None
+    duration: Optional[int] = None
+    if isinstance(new_prompt, dict):
+        duration = new_prompt.get("duration")
+
+    if not prompt:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"status": "error", "message": "missing 'prompt'"},
+        )
+
     question_id = str(uuid.uuid4())
-    
-    # Store question with ID
-    questions[question_id] = {
-        "prompt": prompt,
-        "answers": []
-    }
-    
-    print(f"Created new question with ID: {question_id}")
-    print(f"Question prompt: {prompt}")
-    print(f"Total questions in system: {len(questions)}")
-    
-    # Also queue for students to fetch
-    problem_session.queue_prompt(prompt)
-    
+    questions[question_id] = {"prompt": prompt, "answers": []}
+
+    problem_data = {"prompt": prompt, "duration": duration, "question_id": question_id}
+
+    redis_client = getattr(api.state, "redis", None)
+    try:
+        if redis_client is not None:
+            await redis_client.rpush("problems", json.dumps(problem_data))
+        else:
+            problem_session.queue_prompt(problem_data)
+    except Exception as e:
+        print(f"Redis write failed, falling back to in-memory queue: {e}")
+        problem_session.queue_prompt(problem_data)
+
     return {"status": "received", "question_id": question_id}
 
 
 @api.get("/api/getProblem")
-def get_problem():
+async def get_problem():
     """
     Route for sending practice problem to front end
     On student front-end requesting prompt
     Returns both prompt and question_id so students can submit answers with the correct ID
-    :return:
     """
-    if problem_session.has_prompt():
-        curr_prompt = problem_session.pop_prompt()
-        
-        # Find the question_id that matches this prompt
-        question_id = None
+    redis_client = getattr(api.state, "redis", None)
+
+    # Helper to find a matching question_id for a prompt
+    def find_question_id_for_prompt(curr_prompt: str):
+        if curr_prompt is None:
+            return None
         normalized_prompt = curr_prompt.strip()
-        
         for qid, q_data in questions.items():
-            normalized_stored = q_data["prompt"].strip()
-            # Match by exact or normalized comparison
-            if q_data["prompt"] == curr_prompt or normalized_stored == normalized_prompt:
-                question_id = qid
-                print(f"✓ Found question_id {question_id} for prompt: '{curr_prompt[:50]}...'")
-                break
-        
-        if question_id:
-            return {
-                "status": "queue has element", 
-                "prompt": curr_prompt,
-                "question_id": question_id
-            }
-        else:
-            # If we can't find the question_id, still return the prompt but log a warning
-            print(f"⚠ WARNING: Could not find question_id for prompt: '{curr_prompt[:50]}...'")
-            print(f"⚠ Available questions: {list(questions.keys())}")
-            return {
-                "status": "queue has element", 
-                "prompt": curr_prompt,
-                "question_id": None
-            }
-    else:
-        return {"status": "queue empty"}
+            stored = q_data.get("prompt") if isinstance(q_data, dict) else q_data
+            if stored == curr_prompt or (isinstance(stored, str) and stored.strip() == normalized_prompt):
+                return qid
+        return None
 
-
-@api.post('/api/studentAnswers')
-def create_student_answers(code: dict):
-    """
-    Route for sending student answers of question
-    to the backend from the front end
-    Now accepts question_id directly (preferred) or falls back to prompt matching
-    :param code:
-    :return:
-    """
-
-    #make student code id associate with the encyrpted email
     try:
-        # Extract the code, prompt, and question_id from the nested structure
-        if 'studentAnswers' not in code:
-            print("ERROR: Missing 'studentAnswers' key in request")
-            return {'status': 'error', 'message': 'Invalid request format: missing studentAnswers'}
-        
-        student_code = code['studentAnswers'].get('code', '')
-        prompt = code['studentAnswers'].get('prompt', '')
-        question_id = code['studentAnswers'].get('question_id', None)  # New: accept question_id directly
-        
-        if not student_code:
-            print("ERROR: No student code provided")
-            return {'status': 'error', 'message': 'No code provided'}
-        
-        print(f"=== POST /api/studentAnswers ===")
-        print(f"Received student answer")
-        print(f"Question ID: {question_id}")
-        print(f"Prompt: '{prompt}'")
-        print(f"Code length: {len(student_code)}")
-        print(f"Current questions in system: {len(questions)}")
-        
-        # If question_id is provided, use it directly (preferred method)
-        if question_id and question_id in questions:
-            questions[question_id]["answers"].append(student_code)
-            answer_count = len(questions[question_id]["answers"])
-            print(f"✓ Added answer to question {question_id} (using provided ID)")
-            print(f"✓ Total answers for this question: {answer_count}")
-            return {
-                'status': 'received', 
-                'question_id': question_id, 
-                'answer_count': answer_count,
-                'message': 'Answer submitted successfully'
-            }
-        
-        # Fallback: If question_id not found or not provided, try prompt matching
-        if prompt and (not question_id or question_id not in questions):
-            if question_id and question_id not in questions:
-                print(f"⚠ Question ID '{question_id}' not found, attempting prompt matching...")
-                question_id = None  # Reset to None so we can find the correct one
+        if redis_client is not None:
+            item = await redis_client.lpop("problems")
+            if item is None:
+                return {"status": "queue empty"}
+
+            if isinstance(item, (bytes, bytearray)):
+                try:
+                    item = item.decode("utf-8")
+                except Exception:
+                    item = str(item)
+
+            prompt = None
+            duration = None
+            question_id = None
+            try:
+                parsed = json.loads(item)
+                if isinstance(parsed, dict):
+                    prompt = parsed.get("prompt")
+                    duration = parsed.get("duration")
+                    question_id = parsed.get("question_id")
+                else:
+                    prompt = str(parsed)
+            except Exception:
+                prompt = str(item)
+
+            if question_id is None:
+                question_id = find_question_id_for_prompt(prompt)
+
+            return {"status": "queue has element", "prompt": prompt, "duration": duration, "question_id": question_id}
+
+        # fallback to in-memory
+        if problem_session.has_prompt():
+            curr = problem_session.pop_prompt()
+            prompt = None
+            duration = None
+            question_id = None
+            if isinstance(curr, dict):
+                prompt = curr.get("prompt")
+                duration = curr.get("duration")
+                question_id = curr.get("question_id")
             else:
-                print("⚠ No question_id provided, attempting prompt matching...")
-            normalized_prompt = prompt.strip()
-            found_question_id = None
-            
-            for qid, q_data in questions.items():
-                normalized_stored = q_data["prompt"].strip()
-                # Exact match first, then try normalized comparison
-                if q_data["prompt"] == prompt or normalized_stored == normalized_prompt:
-                    found_question_id = qid
-                    print(f"✓ Found matching question with ID: {found_question_id} (via prompt matching)")
-                    break
-            
-            if found_question_id:
-                question_id = found_question_id
-            
-            if question_id:
-                questions[question_id]["answers"].append(student_code)
-                answer_count = len(questions[question_id]["answers"])
-                print(f"✓ Added answer to question {question_id}")
-                print(f"✓ Total answers for this question: {answer_count}")
-                return {
-                    'status': 'received', 
-                    'question_id': question_id, 
-                    'answer_count': answer_count,
-                    'message': 'Answer submitted successfully'
-                }
-        
-        # If still no match found, return error
-        print(f"✗ ERROR: Could not find question")
-        if question_id:
-            print(f"  - Question ID '{question_id}' not found in questions dictionary")
-        if prompt:
-            print(f"  - No matching question found for prompt: '{prompt}'")
-        print(f"Available question IDs: {list(questions.keys())}")
-        return {
-            'status': 'error', 
-            'message': f'No matching question found. Make sure the question exists.'
-        }
+                prompt = str(curr)
+
+            if question_id is None:
+                question_id = find_question_id_for_prompt(prompt)
+
+            return {"status": "queue has element", "prompt": prompt, "duration": duration, "question_id": question_id}
+
+        return {"status": "queue empty"}
     except Exception as e:
-        print(f"✗ EXCEPTION in create_student_answers: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return {'status': 'error', 'message': f'Server error: {str(e)}'}
+        print(f"Error retrieving problem (Redis or in-memory): {e}")
+        if problem_session.has_prompt():
+            curr = problem_session.pop_prompt()
+            prompt = curr.get("prompt") if isinstance(curr, dict) else str(curr)
+            question_id = find_question_id_for_prompt(prompt)
+            return {"status": "queue has element", "prompt": prompt, "question_id": question_id}
+        return {"status": "queue empty", "error": str(e)}
 
 
-@api.get('/api/getStudentAnswers')
-def get_student_answers():
+@api.post("/api/studentAnswers")
+async def create_student_answers(code: dict):
     """
-    Route to retrieve all questions and their student answers
-    to be displayed for the teacher
-    :return:
+    Route for sending student answers of question to the backend from the front end
+    Now accepts question_id directly (preferred) or falls back to prompt matching
     """
-    # Return all questions with their answers (sorted by creation order - newest first)
-    questions_data = []
-    for question_id, question_data in questions.items():
-        answer_list = question_data["answers"]
-        questions_data.append({
-            "question_id": question_id,
-            "prompt": question_data["prompt"],
-            "answers": answer_list.copy() if isinstance(answer_list, list) else [],  # Return a copy to avoid reference issues
-            "answer_count": len(answer_list) if isinstance(answer_list, list) else 0
-        })
-    
-    print(f"=== GET /api/getStudentAnswers ===")
-    print(f"Total questions in backend: {len(questions)}")
-    print(f"Returning {len(questions_data)} questions with answers")
-    for q in questions_data:
-        print(f"  Question ID: {q['question_id'][:8]}...")
-        print(f"    Prompt: {q['prompt'][:50]}...")
-        print(f"    Answers: {q['answer_count']} answers")
-        if q['answer_count'] > 0:
-            for i, ans in enumerate(q['answers'][:3]):  # Show first 3 answers
-                print(f"      Answer {i+1}: {str(ans)[:50]}...")
-    
-    return {'status': 'success', 'questions': questions_data}
+    redis_client = getattr(api.state, "redis", None)
 
-@api.get('/api/getStudentAnswers/{question_id}')
-def get_student_answers_by_question(question_id: str):
-    """
-    Route to retrieve student answers for a specific question
-    :param question_id:
-    :return:
-    """
-    if question_id in questions:
-        return {
-            'status': 'success',
-            'question_id': question_id,
-            'prompt': questions[question_id]["prompt"],
-            'answers': questions[question_id]["answers"]
-        }
+    # Accept either { 'studentAnswers': { 'code': ..., 'question_id': ... } } or a flat structure
+    payload = code.get("studentAnswers") if isinstance(code, dict) and "studentAnswers" in code else code
+    student_code = None
+    question_id = None
+    if isinstance(payload, dict):
+        student_code = payload.get("code")
+        question_id = payload.get("question_id") or payload.get("questionId")
     else:
-        return {'status': 'error', 'message': 'Question not found'}
+        student_code = payload
 
-@api.delete('/api/deleteQuestion/{question_id}')
+    store_obj = {"code": student_code, "question_id": question_id}
+
+    try:
+        if redis_client is not None:
+            await redis_client.rpush("student_answers", json.dumps(store_obj))
+        else:
+            student_answer_session.queue_prompt(store_obj)
+        return {"status": "received"}
+    except Exception as e:
+        print(f"Failed to store student answer in Redis, falling back to memory: {e}")
+        student_answer_session.queue_prompt(store_obj)
+        return {"status": "received", "fallback": True}
+
+
+@api.get("/api/getStudentAnswers")
+async def get_student_answers():
+    """
+    Route to retrieve all questions and their student answers to be displayed for the teacher
+    """
+    redis_client = getattr(api.state, "redis", None)
+    try:
+        if redis_client is not None:
+            item = await redis_client.lpop("student_answers")
+            if item is None:
+                return {"status": "answer not found"}
+            if isinstance(item, (bytes, bytearray)):
+                item = item.decode("utf-8")
+            try:
+                parsed = json.loads(item)
+            except Exception:
+                parsed = item
+            return {"status": "answers found", "answer": parsed}
+
+        # Fallback to in-memory
+        if student_answer_session.has_prompt():
+            answer = student_answer_session.pop_prompt()
+            return {"status": "answers found", "answer": answer}
+        return {"status": "answer not found"}
+    except Exception as e:
+        print(f"Error retrieving student answers: {e}")
+        if student_answer_session.has_prompt():
+            answer = student_answer_session.pop_prompt()
+            return {"status": "answers found", "answer": answer}
+        return {"status": "answer not found", "error": str(e)}
+
+
+@api.delete("/api/deleteQuestion/{question_id}")
 def delete_question(question_id: str):
     """
     Route to delete a question and all its answers
-    :param question_id:
-    :return:
     """
     try:
         # Strip whitespace from question_id to handle any encoding issues
         question_id = question_id.strip()
-        
+
         print(f"=== DELETE /api/deleteQuestion/{question_id} ===")
         print(f"Requested question_id: '{question_id}'")
         print(f"Question_id type: {type(question_id)}")
         print(f"Question_id length: {len(question_id)}")
         print(f"Total questions in system: {len(questions)}")
-        
+
         # Debug: Print all question IDs for comparison
         if len(questions) > 0:
             print("Available question IDs:")
@@ -331,7 +418,7 @@ def delete_question(question_id: str):
                 print(f"    Match check (stripped): {qid.strip() == question_id}")
         else:
             print("No questions in system (dictionary is empty)")
-        
+
         # Check if question exists (exact match first, then try stripped comparison)
         if question_id in questions:
             deleted_prompt = questions[question_id]["prompt"]
@@ -340,16 +427,16 @@ def delete_question(question_id: str):
             print(f"✓ Remaining questions: {len(questions)}")
             return JSONResponse(
                 status_code=status.HTTP_200_OK,
-                content={'status': 'success', 'message': 'Question deleted successfully'}
+                content={"status": "success", "message": "Question deleted successfully"},
             )
         else:
             # Try to find by stripped comparison as fallback
             found_id = None
-            for qid in questions.keys():
+            for qid in list(questions.keys()):
                 if qid.strip() == question_id:
                     found_id = qid
                     break
-            
+
             if found_id:
                 deleted_prompt = questions[found_id]["prompt"]
                 del questions[found_id]
@@ -357,24 +444,107 @@ def delete_question(question_id: str):
                 print(f"✓ Remaining questions: {len(questions)}")
                 return JSONResponse(
                     status_code=status.HTTP_200_OK,
-                    content={'status': 'success', 'message': 'Question deleted successfully'}
+                    content={"status": "success", "message": "Question deleted successfully"},
                 )
             else:
                 # Question doesn't exist - return success anyway (idempotent delete)
-                # This handles the case where server restarted and lost state, but frontend still has the question
                 print(f"⚠ Question ID '{question_id}' not found in questions dictionary")
                 print(f"⚠ Returning success anyway (idempotent delete - question already removed or never existed)")
                 return JSONResponse(
                     status_code=status.HTTP_200_OK,
-                    content={'status': 'success', 'message': 'Question deleted successfully (was not found in system)'}
+                    content={"status": "success", "message": "Question deleted successfully (was not found in system)"},
                 )
     except Exception as e:
-        print(f"✗ EXCEPTION in delete_question: {str(e)}")
         import traceback
         traceback.print_exc()
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={'status': 'error', 'message': f'Server error: {str(e)}'}
+            content={"detail": f"Authentication failed: {str(e)}"},
         )
 
 
+@api.get("/api/auth/me", response_model=UserResponse)
+async def get_current_user_info(current_user: dict = Depends(get_current_user)):
+    """
+    Get current authenticated user information
+    """
+    return UserResponse(**current_user)
+
+
+@api.put("/api/auth/role")
+async def update_user_role(
+    request: RoleUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Update user role (teacher/student)
+    """
+    success = user_service.update_user_role(current_user["user_id"], request.role)
+
+    if success:
+        return {"message": "Role updated successfully", "new_role": request.role}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid role or update failed",
+        )
+
+
+@api.post("/api/auth/logout")
+async def logout(current_user: dict = Depends(get_current_user)):
+    """
+    Logout user (client should remove token)
+    """
+    return {"message": "Logged out successfully"}
+
+
+# Protected routes that require authentication
+@api.get("/api/protected/test")
+async def protected_test(current_user: dict = Depends(get_current_user)):
+    """
+    Test endpoint for protected routes
+    """
+    return {
+        "message": "This is a protected route",
+        "user": current_user.get("name"),
+        "role": current_user.get("role"),
+    }
+
+
+@api.get("/api/queueStatus")
+async def queue_status():
+    """
+    Non-destructive debug endpoint that reports queue lengths and Redis connection status.
+    Returns:
+      { redis_connected: bool, problems_len: int, student_answers_len: int, error?: str }
+    """
+    redis_client = getattr(api.state, "redis", None)
+    status_resp = {
+        "redis_connected": False,
+        "problems_len": None,
+        "student_answers_len": None,
+    }
+    try:
+        if redis_client is not None:
+            # check connectivity and lengths
+            pong = await redis_client.ping()
+            status_resp["redis_connected"] = bool(pong)
+            status_resp["problems_len"] = await redis_client.llen("problems")
+            status_resp["student_answers_len"] = await redis_client.llen("student_answers")
+        else:
+            # fallback to in-memory session counts
+            status_resp["redis_connected"] = False
+            status_resp["problems_len"] = len(problem_session.prompts)
+            status_resp["student_answers_len"] = len(student_answer_session.prompts)
+    except Exception as e:
+        # On any error report it and also return in-memory counts if available
+        status_resp["error"] = str(e)
+        status_resp["redis_connected"] = False
+        try:
+            status_resp["problems_len"] = len(problem_session.prompts)
+            status_resp["student_answers_len"] = len(student_answer_session.prompts)
+        except Exception:
+            status_resp["problems_len"] = None
+            status_resp["student_answers_len"] = None
+
+    return status_resp

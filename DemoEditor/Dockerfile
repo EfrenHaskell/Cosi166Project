@@ -2,7 +2,7 @@
 FROM python:3.11-slim
 
 # Set working directory
-WORKDIR /app
+WORKDIR /altdemoapi
 
 # Install dependencies
 COPY requirements.txt .
@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expose port (adjust if needed)
-EXPOSE 5000
+EXPOSE 8000
 
 # Start the app
-CMD ["python", "app.py"]
+CMD ["python", "run.py"]

@@ -28,34 +28,32 @@ function App() {
   };
 
   const handleLogin = (userType, userName, password) => {
-    if(
-      userType === "teacher" && 
+    if (
+      userType === "teacher" &&
       userName === loginCredentials.teacher.username &&
       password === loginCredentials.teacher.password
-    )
-      {
+    ) {
       setTeacherMode(true)
       setIsLoggedIn(true)
       setUserType("teacher")
-      } 
+    }
     else if (
-        userType === "student" &&
-        userName === loginCredentials.student.username &&
-        password === loginCredentials.student.password
-      )
-      {
+      userType === "student" &&
+      userName === loginCredentials.student.username &&
+      password === loginCredentials.student.password
+    ) {
       setTeacherMode(false)
       setIsLoggedIn(true)
-      setUserType("student")  
-      }
-    else{
+      setUserType("student")
+    }
+    else {
       alert(`The username or password does not match any ${userType} account`)
     }
   };
 
   const handleLogOut = () => {
-        setIsLoggedIn(false)
-        setTeacherMode(false)
+    setIsLoggedIn(false)
+    setTeacherMode(false)
   };
 
   const handleGoogleLogin = (decodedToken) => {
@@ -83,7 +81,7 @@ function App() {
         </>
       ) : (
         <>
-        <DarkLightTheme/>
+          <DarkLightTheme />
 
         {/* need to make this its own component too lazy lol*/}
         <button className = "log-out-button" onClick = {handleLogOut}> Log Out </button>

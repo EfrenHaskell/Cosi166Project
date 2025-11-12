@@ -14,15 +14,17 @@
 }
 
 
-.editor-output-container > div {
+.editor-output-container>div {
   min-width: 500px;
   max-width: 800px;
   height: 100%;
 }
-.editor-output-container > div:first-child {
+
+.editor-output-container>div:first-child {
   margin-right: auto;
 }
-.editor-output-container > div:last-child {
+
+.editor-output-container>div:last-child {
   margin-left: auto;
 }
 
@@ -32,6 +34,7 @@
     height: auto;
   }
 }
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -45,9 +48,11 @@
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
@@ -56,6 +61,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -69,7 +75,7 @@
 
 .card {
   padding: 2em;
-}  
+}
 
 .read-the-docs {
   color: #888;
@@ -93,7 +99,8 @@
 /* this css below is for the notes sidebar part.  */
 
 /* Ensure input text is visible */
-input, textarea {
+input,
+textarea {
   color: #222 !important;
   background: #fff !important;
 }
@@ -199,9 +206,10 @@ input, textarea {
 } */
 
 
-.log-out-button{
-  position: absolute;
-  top: 0px;
+.log-out-button {
+  background-color: #727064;
+  position: fixed;
+  bottom: 0px;
   right: 0px;
 
 }
@@ -337,4 +345,3 @@ select:focus {
     padding: 30px 20px;
   }
 }
-

@@ -1,13 +1,13 @@
-import {useState, useEffect, use} from 'react';
+import { useState, useEffect, use } from 'react';
 
 export default function DarkLightTheme(){
     
     //need to fix input colors too 
 
 
-    const [backgroundColor, setBackgroundColor] = useState('white') 
+    const [backgroundColor, setBackgroundColor] = useState('white')
     const [textColor, setTextColor] = useState('black')
-    
+
     const backgroundTheme = () => {
         setBackgroundColor(prevColor => (prevColor === 'white' ? 'black' : 'white'));
         setTextColor(prevColor => (prevColor === 'black' ? 'white' : 'black'));
@@ -22,10 +22,10 @@ export default function DarkLightTheme(){
     }, [textColor]);
 
 
-    return(
+    return (
         <>
-        
-        <button  id = 'theme-toggle' onClick = {backgroundTheme}> Toggle theme </button>
+
+            <button id='theme-toggle' onClick={backgroundTheme}> Toggle theme </button>
 
         </>
 
