@@ -11,11 +11,27 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import subprocess
 import re
 from session import Session
+from redis_client import init_redis, close_redis
 from auth import oauth_service, user_service
 from pydantic import BaseModel
 from typing import Optional
 
 api = FastAPI()
+# Initialize Redis on startup and close on shutdown (if available)
+@api.on_event("startup")
+async def _startup():
+    try:
+        await init_redis(api)
+    except Exception as e:
+        # don't crash if redis is not available; fallback to in-memory session
+        print(f"Warning: failed to initialize redis: {e}")
+
+@api.on_event("shutdown")
+async def _shutdown():
+    try:
+        await close_redis(api)
+    except Exception:
+        pass
 # add CORS handling to deal with restricted transaction origin
 api.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"],
                    allow_headers=["*"])
@@ -132,33 +148,59 @@ def submit_code(code: dict):
 
 
 @api.put("/api/createProblem")
-def create_problem(new_prompt: dict):
+async def create_problem(new_prompt: dict):
     """
     Route for creating new practice problem
     Server gets problem prompt from front-end
     :param new_prompt:
     :return:
     """
-    problem_session.queue_prompt(new_prompt["prompt"])
+    prompt = new_prompt["prompt"]
+    # Try to write to Redis, fallback to in-memory session if Redis unavailable
+    redis_client = getattr(api.state, "redis", None)
+    try:
+        if redis_client is not None:
+            await redis_client.rpush("problems", prompt)
+        else:
+            problem_session.queue_prompt(prompt)
+    except Exception as e:
+        print(f"Redis write failed, falling back to in-memory queue: {e}")
+        problem_session.queue_prompt(prompt)
+
     return {"status": "received"}
 
 
 @api.get("/api/getProblem")
-def get_problem():
+async def get_problem():
     """
     Route for sending practice problem to front end
     On student front-end requesting prompt
     :return:
     """
-    if problem_session.has_prompt():
-        curr_prompt = problem_session.pop_prompt()
-        return {"status": "queue has element", "prompt": curr_prompt}
-    else:
-        return {"status": "queue empty"}
+    redis_client = getattr(api.state, "redis", None)
+    try:
+        if redis_client is not None:
+            item = await redis_client.lpop("problems")
+            if item is not None:
+                return {"status": "queue has element", "prompt": item}
+            return {"status": "queue empty"}
+        else:
+            if problem_session.has_prompt():
+                curr_prompt = problem_session.pop_prompt()
+                return {"status": "queue has element", "prompt": curr_prompt}
+            else:
+                return {"status": "queue empty"}
+    except Exception as e:
+        print(f"Redis read failed, falling back to in-memory queue: {e}")
+        if problem_session.has_prompt():
+            curr_prompt = problem_session.pop_prompt()
+            return {"status": "queue has element", "prompt": curr_prompt}
+        else:
+            return {"status": "queue empty"}
 
 
 @api.post('/api/studentAnswers')
-def create_student_answers(code: dict):
+async def create_student_answers(code: dict):
     """
     Route for sending student answers of question
     to the backend from the front end
@@ -167,23 +209,47 @@ def create_student_answers(code: dict):
     """
     # Extract the code from the nested structure
     student_code = code['studentAnswers']['code']
-    student_answer_session.queue_prompt(student_code)
+    redis_client = getattr(api.state, "redis", None)
+    try:
+        if redis_client is not None:
+            await redis_client.rpush("student_answers", student_code)
+        else:
+            student_answer_session.queue_prompt(student_code)
+    except Exception as e:
+        print(f"Redis write failed for student answer, falling back: {e}")
+        student_answer_session.queue_prompt(student_code)
+
     return {'status': 'received'}
 
 
 @api.get('/api/getStudentAnswers')
-def get_student_answers():
+async def get_student_answers():
     """
     Route to retrieve student answers
     to be displayed for the teacher
     :return:
     """
     
-    if student_answer_session.has_prompt():
-        answer = student_answer_session.pop_prompt()
-        return {'status': 'answers found', 'answer' : answer}
-    else:
-        return {'status': 'answer not found'}
+    redis_client = getattr(api.state, "redis", None)
+    try:
+        if redis_client is not None:
+            ans = await redis_client.lpop("student_answers")
+            if ans is not None:
+                return {'status': 'answers found', 'answer': ans}
+            return {'status': 'answer not found'}
+        else:
+            if student_answer_session.has_prompt():
+                answer = student_answer_session.pop_prompt()
+                return {'status': 'answers found', 'answer' : answer}
+            else:
+                return {'status': 'answer not found'}
+    except Exception as e:
+        print(f"Redis read failed for student answers, falling back: {e}")
+        if student_answer_session.has_prompt():
+            answer = student_answer_session.pop_prompt()
+            return {'status': 'answers found', 'answer' : answer}
+        else:
+            return {'status': 'answer not found'}
 
 
 # OAuth Authentication Endpoints
@@ -268,3 +334,42 @@ async def protected_test(current_user: dict = Depends(get_current_user)):
         "user": current_user["name"],
         "role": current_user["role"]
     }
+
+
+@api.get("/api/queueStatus")
+async def queue_status():
+    """
+    Non-destructive debug endpoint that reports queue lengths and Redis connection status.
+    Returns:
+      { redis_connected: bool, problems_len: int, student_answers_len: int, error?: str }
+    """
+    redis_client = getattr(api.state, "redis", None)
+    status = {
+        "redis_connected": False,
+        "problems_len": None,
+        "student_answers_len": None
+    }
+    try:
+        if redis_client is not None:
+            # check connectivity and lengths
+            pong = await redis_client.ping()
+            status["redis_connected"] = bool(pong)
+            status["problems_len"] = await redis_client.llen("problems")
+            status["student_answers_len"] = await redis_client.llen("student_answers")
+        else:
+            # fallback to in-memory session counts
+            status["redis_connected"] = False
+            status["problems_len"] = len(problem_session.prompts)
+            status["student_answers_len"] = len(student_answer_session.prompts)
+    except Exception as e:
+        # On any error report it and also return in-memory counts if available
+        status["error"] = str(e)
+        status["redis_connected"] = False
+        try:
+            status["problems_len"] = len(problem_session.prompts)
+            status["student_answers_len"] = len(student_answer_session.prompts)
+        except Exception:
+            status["problems_len"] = None
+            status["student_answers_len"] = None
+
+    return status
