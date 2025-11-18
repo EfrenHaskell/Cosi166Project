@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
 
-export default function CodeEditor({ prompt }) {
+export default function CodeEditor({ prompt, questionId }) {
   const editorRef = useRef(null);
   const [output, setOutput] = useState("");
   const [error, setError] = useState("");
@@ -55,6 +55,7 @@ export default function CodeEditor({ prompt }) {
     }
     
     console.log('Submitting student answer...');
+    console.log('Question ID:', questionId);
     console.log('Prompt:', prompt);
     console.log('Code length:', code.length);
     
@@ -62,7 +63,7 @@ export default function CodeEditor({ prompt }) {
       const response = await fetch('http://localhost:9000/api/studentAnswers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentAnswers: { code, prompt } }),
+        body: JSON.stringify({ studentAnswers: { code, prompt, question_id: questionId } }),
       });
       
       console.log('Response status:', response.status);

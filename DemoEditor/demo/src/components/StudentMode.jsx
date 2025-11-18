@@ -5,6 +5,7 @@ import CodeEditor from "./CodeEditor";
 export default function StudentMode(){
 
     const [teacherQuestion, setTeacherQuestion] = useState("");
+    const [questionId, setQuestionId] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -21,10 +22,16 @@ export default function StudentMode(){
             
             if (result.status !== "queue empty") {
                 setTeacherQuestion(result.prompt);
+                setQuestionId(result.question_id || null);
+                console.log('Question ID:', result.question_id);
+            } else {
+                setTeacherQuestion("");
+                setQuestionId(null);
             }
         } catch (error) {
             console.error('Failed to fetch problem:', error);
             setTeacherQuestion("");
+            setQuestionId(null);
         } finally {
             setLoading(false);
         }
@@ -57,7 +64,7 @@ export default function StudentMode(){
                 <button style={{ marginBottom: '1rem' }} onClick={handleRefresh}>📋 Check for Questions</button>
             </div>)}
             <div style={{ width: '100%', marginBottom: '1.5rem' }}>
-                <CodeEditor prompt={teacherQuestion}/>
+                <CodeEditor prompt={teacherQuestion} questionId={questionId}/>
             </div>
         </div>
     );
