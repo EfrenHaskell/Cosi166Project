@@ -5,8 +5,9 @@
 __authors__ = ""
 
 import ai_utils
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import subprocess
 import re
 from session import Session
@@ -123,11 +124,39 @@ def get_problem():
     """
     Route for sending practice problem to front end
     On student front-end requesting prompt
+    Returns both prompt and question_id so students can submit answers with the correct ID
     :return:
     """
     if problem_session.has_prompt():
         curr_prompt = problem_session.pop_prompt()
-        return {"status": "queue has element", "prompt": curr_prompt}
+        
+        # Find the question_id that matches this prompt
+        question_id = None
+        normalized_prompt = curr_prompt.strip()
+        
+        for qid, q_data in questions.items():
+            normalized_stored = q_data["prompt"].strip()
+            # Match by exact or normalized comparison
+            if q_data["prompt"] == curr_prompt or normalized_stored == normalized_prompt:
+                question_id = qid
+                print(f"✓ Found question_id {question_id} for prompt: '{curr_prompt[:50]}...'")
+                break
+        
+        if question_id:
+            return {
+                "status": "queue has element", 
+                "prompt": curr_prompt,
+                "question_id": question_id
+            }
+        else:
+            # If we can't find the question_id, still return the prompt but log a warning
+            print(f"⚠ WARNING: Could not find question_id for prompt: '{curr_prompt[:50]}...'")
+            print(f"⚠ Available questions: {list(questions.keys())}")
+            return {
+                "status": "queue has element", 
+                "prompt": curr_prompt,
+                "question_id": None
+            }
     else:
         return {"status": "queue empty"}
 
@@ -137,51 +166,38 @@ def create_student_answers(code: dict):
     """
     Route for sending student answers of question
     to the backend from the front end
+    Now accepts question_id directly (preferred) or falls back to prompt matching
     :param code:
     :return:
     """
+
+    #make student code id associate with the encyrpted email
     try:
-        # Extract the code and prompt from the nested structure
+        # Extract the code, prompt, and question_id from the nested structure
         if 'studentAnswers' not in code:
             print("ERROR: Missing 'studentAnswers' key in request")
             return {'status': 'error', 'message': 'Invalid request format: missing studentAnswers'}
         
         student_code = code['studentAnswers'].get('code', '')
         prompt = code['studentAnswers'].get('prompt', '')
+        question_id = code['studentAnswers'].get('question_id', None)  # New: accept question_id directly
         
         if not student_code:
             print("ERROR: No student code provided")
             return {'status': 'error', 'message': 'No code provided'}
         
-        if not prompt:
-            print("ERROR: No prompt provided")
-            return {'status': 'error', 'message': 'No prompt provided'}
-        
         print(f"=== POST /api/studentAnswers ===")
         print(f"Received student answer")
+        print(f"Question ID: {question_id}")
         print(f"Prompt: '{prompt}'")
         print(f"Code length: {len(student_code)}")
         print(f"Current questions in system: {len(questions)}")
-        for qid, q_data in questions.items():
-            print(f"  - {qid[:8]}...: '{q_data['prompt']}'")
         
-        # Find the question that matches this prompt (normalize whitespace for matching)
-        question_id = None
-        normalized_prompt = prompt.strip()
-        
-        for qid, q_data in questions.items():
-            normalized_stored = q_data["prompt"].strip()
-            # Exact match first, then try normalized comparison
-            if q_data["prompt"] == prompt or normalized_stored == normalized_prompt:
-                question_id = qid
-                print(f"✓ Found matching question with ID: {question_id}")
-                break
-        
-        # If question found, add answer to it
-        if question_id:
+        # If question_id is provided, use it directly (preferred method)
+        if question_id and question_id in questions:
             questions[question_id]["answers"].append(student_code)
             answer_count = len(questions[question_id]["answers"])
-            print(f"✓ Added answer to question {question_id}")
+            print(f"✓ Added answer to question {question_id} (using provided ID)")
             print(f"✓ Total answers for this question: {answer_count}")
             return {
                 'status': 'received', 
@@ -189,14 +205,51 @@ def create_student_answers(code: dict):
                 'answer_count': answer_count,
                 'message': 'Answer submitted successfully'
             }
-        else:
-            # If no matching question found, create a new one or return error
-            print(f"✗ ERROR: No matching question found for prompt: '{prompt}'")
-            print(f"Available prompts: {[q_data['prompt'] for q_data in questions.values()]}")
-            return {
-                'status': 'error', 
-                'message': f'No matching question found for this prompt. Make sure the question exists.'
-            }
+        
+        # Fallback: If question_id not found or not provided, try prompt matching
+        if prompt and (not question_id or question_id not in questions):
+            if question_id and question_id not in questions:
+                print(f"⚠ Question ID '{question_id}' not found, attempting prompt matching...")
+                question_id = None  # Reset to None so we can find the correct one
+            else:
+                print("⚠ No question_id provided, attempting prompt matching...")
+            normalized_prompt = prompt.strip()
+            found_question_id = None
+            
+            for qid, q_data in questions.items():
+                normalized_stored = q_data["prompt"].strip()
+                # Exact match first, then try normalized comparison
+                if q_data["prompt"] == prompt or normalized_stored == normalized_prompt:
+                    found_question_id = qid
+                    print(f"✓ Found matching question with ID: {found_question_id} (via prompt matching)")
+                    break
+            
+            if found_question_id:
+                question_id = found_question_id
+            
+            if question_id:
+                questions[question_id]["answers"].append(student_code)
+                answer_count = len(questions[question_id]["answers"])
+                print(f"✓ Added answer to question {question_id}")
+                print(f"✓ Total answers for this question: {answer_count}")
+                return {
+                    'status': 'received', 
+                    'question_id': question_id, 
+                    'answer_count': answer_count,
+                    'message': 'Answer submitted successfully'
+                }
+        
+        # If still no match found, return error
+        print(f"✗ ERROR: Could not find question")
+        if question_id:
+            print(f"  - Question ID '{question_id}' not found in questions dictionary")
+        if prompt:
+            print(f"  - No matching question found for prompt: '{prompt}'")
+        print(f"Available question IDs: {list(questions.keys())}")
+        return {
+            'status': 'error', 
+            'message': f'No matching question found. Make sure the question exists.'
+        }
     except Exception as e:
         print(f"✗ EXCEPTION in create_student_answers: {str(e)}")
         import traceback
@@ -259,13 +312,69 @@ def delete_question(question_id: str):
     :param question_id:
     :return:
     """
-    if question_id in questions:
-        deleted_prompt = questions[question_id]["prompt"]
-        del questions[question_id]
-        print(f"Deleted question {question_id} with prompt: '{deleted_prompt}'")
-        print(f"Remaining questions: {len(questions)}")
-        return {'status': 'success', 'message': 'Question deleted successfully'}
-    else:
-        return {'status': 'error', 'message': 'Question not found'}
+    try:
+        # Strip whitespace from question_id to handle any encoding issues
+        question_id = question_id.strip()
+        
+        print(f"=== DELETE /api/deleteQuestion/{question_id} ===")
+        print(f"Requested question_id: '{question_id}'")
+        print(f"Question_id type: {type(question_id)}")
+        print(f"Question_id length: {len(question_id)}")
+        print(f"Total questions in system: {len(questions)}")
+        
+        # Debug: Print all question IDs for comparison
+        if len(questions) > 0:
+            print("Available question IDs:")
+            for qid in questions.keys():
+                print(f"  - '{qid}' (type: {type(qid)}, length: {len(qid)})")
+                print(f"    Match check: {qid == question_id}")
+                print(f"    Match check (stripped): {qid.strip() == question_id}")
+        else:
+            print("No questions in system (dictionary is empty)")
+        
+        # Check if question exists (exact match first, then try stripped comparison)
+        if question_id in questions:
+            deleted_prompt = questions[question_id]["prompt"]
+            del questions[question_id]
+            print(f"✓ Deleted question {question_id} with prompt: '{deleted_prompt}'")
+            print(f"✓ Remaining questions: {len(questions)}")
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={'status': 'success', 'message': 'Question deleted successfully'}
+            )
+        else:
+            # Try to find by stripped comparison as fallback
+            found_id = None
+            for qid in questions.keys():
+                if qid.strip() == question_id:
+                    found_id = qid
+                    break
+            
+            if found_id:
+                deleted_prompt = questions[found_id]["prompt"]
+                del questions[found_id]
+                print(f"✓ Deleted question {found_id} (matched after stripping) with prompt: '{deleted_prompt}'")
+                print(f"✓ Remaining questions: {len(questions)}")
+                return JSONResponse(
+                    status_code=status.HTTP_200_OK,
+                    content={'status': 'success', 'message': 'Question deleted successfully'}
+                )
+            else:
+                # Question doesn't exist - return success anyway (idempotent delete)
+                # This handles the case where server restarted and lost state, but frontend still has the question
+                print(f"⚠ Question ID '{question_id}' not found in questions dictionary")
+                print(f"⚠ Returning success anyway (idempotent delete - question already removed or never existed)")
+                return JSONResponse(
+                    status_code=status.HTTP_200_OK,
+                    content={'status': 'success', 'message': 'Question deleted successfully (was not found in system)'}
+                )
+    except Exception as e:
+        print(f"✗ EXCEPTION in delete_question: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={'status': 'error', 'message': f'Server error: {str(e)}'}
+        )
 
 

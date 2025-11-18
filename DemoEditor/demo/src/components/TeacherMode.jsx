@@ -52,17 +52,13 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
           throw new Error(`Error message: ${response.status} `)
         }
         const result = await response.json()
-        console.log('Student answer result:', result)
-        console.log('Questions array:', result.questions)
-        console.log('Questions array length:', result.questions?.length)
         
         if (result.status === 'success' && result.questions !== undefined) {
           // Preserve expanded state during update
           const currentExpanded = expandedQuestionIdRef.current;
           
           setQuestions(prevQuestions => {
-            console.log(`Before merge: ${prevQuestions.length} questions in state`);
-            console.log(`Server returned: ${result.questions.length} questions`);
+           
             
             // Always merge, never replace - server data updates existing, but we keep local if server is empty
             const questionMap = new Map();
@@ -90,7 +86,6 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
                     answers: Array.isArray(serverQ.answers) ? [...serverQ.answers] : (existing.answers || []),
                     answer_count: serverQ.answer_count !== undefined ? serverQ.answer_count : (Array.isArray(serverQ.answers) ? serverQ.answers.length : existing.answer_count || 0)
                   });
-                  console.log(`Updated question ${serverQ.question_id.substring(0, 8)} with ${serverQ.answer_count || serverQ.answers?.length || 0} answers`);
                 } else {
                   // New question from server
                   questionMap.set(serverQ.question_id, {
@@ -98,12 +93,9 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
                     answers: Array.isArray(serverQ.answers) ? [...serverQ.answers] : [],
                     answer_count: serverQ.answer_count || (Array.isArray(serverQ.answers) ? serverQ.answers.length : 0)
                   });
-                  console.log(`Added new question from server: ${serverQ.question_id.substring(0, 8)}`);
                 }
               });
-            } else {
-              console.log('Server returned empty questions array - preserving existing local questions');
-            }
+            } 
             
             // Convert back to array - preserve original order (no sorting)
             const merged = Array.from(questionMap.values());
@@ -127,13 +119,7 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
               }
             });
             
-            console.log(`After merge: ${final.length} questions total`);
-            console.log('Merged questions:', final.map(q => ({
-              id: q.question_id.substring(0, 8),
-              prompt: q.prompt?.substring(0, 30) || 'No prompt',
-              answerCount: q.answer_count || q.answers?.length || 0,
-              hasAnswers: (q.answers && q.answers.length > 0)
-            })));
+
             
             // Safety check: If merge resulted in empty but we had questions before, reload from localStorage
             if (final.length === 0 && prevQuestions.length > 0) {
@@ -209,9 +195,21 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
     try {
       const response = await fetch(`http://localhost:9000/api/deleteQuestion/${questionId}`, {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
       
+      // Check if response is OK (status 200-299)
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Delete request failed with status ${response.status}:`, errorText);
+        throw new Error(`Server returned status ${response.status}: ${errorText}`);
+      }
+      
       const result = await response.json();
+      console.log(`Delete response status: ${result.status}`);
+      console.log(`Delete response message: ${result.message}`);
       
       if (result.status === 'success') {
         // Remove from local state
@@ -227,12 +225,28 @@ export default function TeacherMode({ teacherMode, setTeacherMode}) {
           expandedQuestionIdRef.current = null;
         }
       } else {
+        console.log(`Here is the question id: ${questionId}`)
         console.error('Failed to delete question:', result.message);
         alert(`Failed to delete question: ${result.message}`);
       }
     } catch (error) {
       console.error('Error deleting question:', error);
-      alert(`Error deleting question: ${error.message}`);
+      // If it's a network error, still remove from local state (idempotent delete)
+      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        console.warn('Network error during delete, removing from local state anyway');
+        setQuestions(prevQuestions => {
+          const filtered = prevQuestions.filter(q => q.question_id !== questionId);
+          console.log(`Removed question ${questionId} from local state due to network error. Remaining: ${filtered.length}`);
+          return filtered;
+        });
+        
+        if (expandedQuestionId === questionId) {
+          setExpandedQuestionId(null);
+          expandedQuestionIdRef.current = null;
+        }
+      } else {
+        alert(`Error deleting question: ${error.message}`);
+      }
     }
   };
 
