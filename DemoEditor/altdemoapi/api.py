@@ -15,6 +15,7 @@ from redis_client import init_redis, close_redis
 from auth import oauth_service, user_service
 from pydantic import BaseModel
 from typing import Optional
+import json
 
 api = FastAPI()
 # Initialize Redis on startup and close on shutdown (if available)
@@ -146,6 +147,47 @@ def submit_code(code: dict):
     out, err = run_sub_process("test.py")
     return {"status": "received", "out": out, "err": err}
 
+@api.get("/api/peekProblem")
+async def peek_problem():
+    """
+    Look at the next problem WITHOUT removing it from the queue.
+    """
+    redis_client = getattr(api.state, "redis", None)
+    try:
+        if redis_client is not None:
+            # Look at the first item without popping
+            item = await redis_client.lindex("problems", 0)
+            if item is not None:
+                problem = json.loads(item) 
+                return {
+                    "status": "queue has element",
+                    "prompt": problem["prompt"],
+                    "duration": problem.get("duration"),
+                }
+            return {"status": "queue empty"}
+        else:
+            if problem_session.has_prompt():
+                problem = problem_session.peek_prompt()  # you implement this
+                return {
+                    "status": "queue has element",
+                    "prompt": problem["prompt"],
+                    "duration": problem.get("duration"),
+                }
+            else:
+                return {"status": "queue empty"}
+            
+    except Exception as e:
+        print(f"Redis read failed, falling back to in-memory queue: {e}")
+        if problem_session.has_prompt():
+            problem = problem_session.peek_prompt()
+            return {
+                "status": "queue has element",
+                "prompt": problem["prompt"],
+                "duration": problem.get("duration"),
+            }
+        else:
+            return {"status": "queue empty"}
+
 
 @api.put("/api/createProblem")
 async def create_problem(new_prompt: dict):
@@ -156,16 +198,24 @@ async def create_problem(new_prompt: dict):
     :return:
     """
     prompt = new_prompt["prompt"]
+    duration: Optional[int] = new_prompt.get("duration")  # seconds or None
+
+    # Bundle them into one object
+    problem_data = {
+        "prompt": prompt,
+        "duration": duration,
+    }
+    
     # Try to write to Redis, fallback to in-memory session if Redis unavailable
     redis_client = getattr(api.state, "redis", None)
     try:
         if redis_client is not None:
-            await redis_client.rpush("problems", prompt)
+            await redis_client.rpush("problems", json.dumps(problem_data))
         else:
-            problem_session.queue_prompt(prompt)
+            problem_session.queue_prompt(problem_data)
     except Exception as e:
         print(f"Redis write failed, falling back to in-memory queue: {e}")
-        problem_session.queue_prompt(prompt)
+        problem_session.queue_prompt(problem_data)
 
     return {"status": "received"}
 
@@ -182,19 +232,32 @@ async def get_problem():
         if redis_client is not None:
             item = await redis_client.lpop("problems")
             if item is not None:
-                return {"status": "queue has element", "prompt": item}
+                problem = json.loads(item)
+                return {
+                    "status": "queue has element",
+                    "prompt": problem["prompt"],
+                    "duration": problem.get("duration"),
+                }
             return {"status": "queue empty"}
         else:
             if problem_session.has_prompt():
-                curr_prompt = problem_session.pop_prompt()
-                return {"status": "queue has element", "prompt": curr_prompt}
+                problem = problem_session.pop_prompt()
+                return {
+                    "status": "queue has element",
+                    "prompt": problem["prompt"],
+                    "duration": problem.get("duration"),
+                }
             else:
                 return {"status": "queue empty"}
     except Exception as e:
         print(f"Redis read failed, falling back to in-memory queue: {e}")
         if problem_session.has_prompt():
-            curr_prompt = problem_session.pop_prompt()
-            return {"status": "queue has element", "prompt": curr_prompt}
+            problem = problem_session.pop_prompt()
+            return {
+                "status": "queue has element",
+                "prompt": problem["prompt"],
+                "duration": problem.get("duration"),
+            }
         else:
             return {"status": "queue empty"}
 
