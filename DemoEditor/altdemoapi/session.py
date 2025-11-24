@@ -13,3 +13,8 @@ class Session:
 
     def has_prompt(self) -> bool:
         return len(self.prompts) > 0
+    
+    def peek_prompt(self):
+        if self.prompts:
+            return self.prompts[0]
+        return None
