@@ -181,7 +181,7 @@ def get_student_answers():
     
     if student_answer_session.has_prompt():
         answer = student_answer_session.pop_prompt()
-        return {'status': 'answers found', 'answer' : answer}
+        return {'status': 'answers found', 'answer': answer}
     else:
         return {'status': 'answer not found'}
 

@@ -122,7 +122,9 @@ class ResponseTemplate:
                     curr_section.append(line)
 
     def skill_list(self):
-        return ",\n".join(self.skill_section.internal)
+        skills = ""
+        for skill, description in self.skill_section.internal.items():
+            skills += f"{skill}: {description},\n"
 
     def default_message(self, line):
         self.problem_section.append(line)
@@ -249,3 +251,4 @@ class Agent:
 
     def run_skill_generator(self, skill_map: dict[str, str], debug_path=None):
         output = self.culminate_all(skill_map, debug_path)
+        return output
