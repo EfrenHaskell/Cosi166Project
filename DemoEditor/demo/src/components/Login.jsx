@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import leetcatImage from '../assets/leetcat.jpeg';
+import { GoogleLogin } from "@react-oauth/google";
+import { jwtDecode } from "jwt-decode";
 
-export default function Login({onLogin}) {
+export default function Login({onLogin, onGoogleLogin}) {
   const [userName, setUserName] = useState('')
   const [password,setPassword] = useState('')
   const [userType, setUserType] = useState('student')
@@ -81,7 +83,27 @@ export default function Login({onLogin}) {
               Sign in
             </button>
           </div>
+
+          <div>
+
+          <GoogleLogin 
+          onSuccess = {(credentialResponse) => {
+            try {
+              const decoded = jwtDecode(credentialResponse.credential);
+              console.log(decoded);
+              if (onGoogleLogin) {
+                onGoogleLogin(decoded);
+              }
+            } catch (error) {
+              console.error("Error decoding token:", error);
+            }
+          }} 
+          onError = {() => console.log("Login failed")} 
+          />
+
+          </div>
       
+  
         </form>
 
       </div>

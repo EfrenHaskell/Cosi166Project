@@ -145,6 +145,14 @@ class Agent:
     def __init__(self):
         self.api_key = load.OPEN_AI_API_KEY
         self.ai_context = load.CONFIG.ai_context
+        
+        # Check if API key is set
+        if not self.api_key:
+            raise ValueError(
+                "OPEN_AI_API_KEY environment variable is not set. "
+                "Please set it in your .env file or environment variables."
+            )
+        
         self.client = OpenAI(api_key=self.api_key,)
 
     @staticmethod
