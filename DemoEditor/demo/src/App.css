@@ -374,6 +374,10 @@ select:focus {
   transition: background-color 0.2s;
 }
 
+.classSeccions button:hover {
+  background-color: #043467;
+}
+
 /* this is css for Addnote Modal */
 
 
@@ -389,7 +393,7 @@ select:focus {
   background: #fff;
   border-radius: 20px;
   padding: 18px;
-  box-shadow: 4px 9px 50px 28px rgba(0, 0, 0, 0.82);
+  box-shadow: -6px 13px 50px 20px rgba(0, 0, 0, 0.76);
   z-index: 1000;
 }
 
@@ -452,7 +456,7 @@ select:focus {
 }
 
 .teacher-analytics_option button:hover {
-  background-color: #0056b3;
+  background-color: #043467;
 }
 
 
