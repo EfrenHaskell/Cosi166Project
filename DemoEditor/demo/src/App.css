@@ -338,6 +338,166 @@ select:focus {
   transform: scale(0.98);
 }
 
+.Class {
+  display: flex;
+  /* border: 2px solid black; */
+}
+
+/* this is css for class seccions  */
+.classSeccions {
+  width: 50%;
+  max-width: 200px;
+  margin: 0 auto 1rem auto;
+  /* center and add spacing below */
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+
+}
+
+.classSeccions h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  color: #333;
+}
+
+.classSeccions button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+/* this is css for Addnote Modal */
+
+
+.Addclass-Modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 92%;
+  max-width: 1000px;
+  height: 50%;
+  max-height: 900px;
+  background: #fff;
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 4px 9px 50px 28px rgba(0, 0, 0, 0.82);
+  z-index: 1000;
+}
+
+.classModal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.classModal-closeButton {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.classModal-content {
+  margin-top: 8px;
+}
+
+
+
+
+
+
+
+
+
+/* this is where i make the css for the teacher analytics modal */
+.teacher-analytics_option {
+  width: 50%;
+  max-width: 200px;
+  margin: 0 auto 1rem auto;
+  /* center and add spacing below */
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.teacher-analytics_option h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  color: #333;
+}
+
+.teacher-analytics_option button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.teacher-analytics_option button:hover {
+  background-color: #0056b3;
+}
+
+
+
+
+/* this is css for Analytics Modal */
+.AnalyticsModal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 92%;
+  max-width: 1000px;
+  height: 50%;
+  max-height: 900px;
+  background: #fff;
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 15px 13px 50px 29px rgba(0, 0, 0, 0.76);
+  z-index: 1000;
+}
+
+.AnalyticsModal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.AnalyticsModal-closeButton {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.AnalyticsModal-content {
+  margin-top: 8px;
+}
+
+
+
+
 /* Responsive design */
 @media (max-width: 400px) {
   .login-container form {
