@@ -203,6 +203,14 @@ class Agent:
                                                 {skills}""",
                                  debug_path=debug_path)
 
+    def get_help(self, prompt, debug_path=None):
+        context = """
+            Help me get started with the following coding prompt without giving me the answer, keep it vague.
+        """
+        return self.make_request(instructions=f"You are a coding assistant, {self.ai_context}",
+                                 input_value=prompt,
+                                 debug_path=debug_path)
+
     def make_request(self, instructions, input_value, debug_path=None) -> str:
         """
         Make request to OpenAI API.
@@ -260,3 +268,16 @@ class Agent:
     def run_skill_generator(self, skill_map: dict[str, str], debug_path=None):
         output = self.culminate_all(skill_map, debug_path)
         return output
+
+    @staticmethod
+    def categorization_to_dict(category_str: str):
+        categories: dict[str, list[str]] = {}
+        current_category: str = ""
+        for line in category_str:
+            line = line.strip()
+            if line.endswith("{"):
+                current_category = line
+                categories[current_category] = []
+            else:
+                categories[current_category].append(line)
+        return categories
