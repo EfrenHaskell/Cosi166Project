@@ -4,9 +4,17 @@ import StudentMode from "./StudentMode";
 
 const Sidebar = () => {
   const [open, setOpen] = useState(false);
+
+  // const openCodeQuestion = () => {
+  //   window.open(<StudentMode />, "_blank"); // opens in new tab
+  // };
+  //   const openCodeQuestion = () => {
+  //   window.open("/student", "_blank");
+  // };
   const openCodeQuestion = () => {
-    window.open(<StudentMode />, "_blank"); // opens in new tab
+    window.open("/student", "_blank");
   };
+
   return (
     <div className="sideBar">
       <div className="sidebar_header">

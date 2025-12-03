@@ -87,12 +87,11 @@ function App() {
               setTeacherMode={setTeacherMode}
             />
           ) : (
+            // <StudentMode />
             <div className="class-container">
               <Sidebar />
               <MainNotes />
             </div>
-
-          
           )}
         </>
       )}
