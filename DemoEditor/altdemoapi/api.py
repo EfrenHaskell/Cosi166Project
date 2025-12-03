@@ -338,6 +338,18 @@ async def create_student_answers(code: dict):
     """
     redis_client = getattr(api.state, "redis", None)
 
+
+@api.get('/api/getStudentAnswers')
+def get_student_answers():
+    """
+    Route to retrieve student answers
+    to be displayed for the teacher
+    :return:
+    """
+    
+    if student_answer_session.has_prompt():
+        answer = student_answer_session.pop_prompt()
+        return {'status': 'answers found', 'answer': answer}
     # Accept either { 'studentAnswers': { 'code': ..., 'question_id': ... } } or a flat structure
     payload = code.get("studentAnswers") if isinstance(code, dict) and "studentAnswers" in code else code
     student_code = None

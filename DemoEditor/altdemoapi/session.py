@@ -4,6 +4,7 @@ import ai_utils
 class Session:
     def __init__(self):
         self.prompts: list[str] = []
+        self.answers: dict[str, tuple[str, str]] = {}
 
     def queue_prompt(self, prompt: str):
         self.prompts.append(prompt)
