@@ -6,6 +6,8 @@ __authors__ = ""
 
 import ai_utils
 from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
+import uuid
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import subprocess
@@ -37,7 +39,18 @@ api.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
                    allow_headers=["*"])
 
 curr_session = Session()
-new_agent = ai_utils.Agent()
+new_agent = None
+
+def get_agent():
+    """Lazy initialize AI agent to avoid requiring OPEN_AI_API_KEY at import time."""
+    global new_agent
+    if new_agent is None:
+        try:
+            new_agent = ai_utils.Agent()
+        except Exception as e:
+            print(f"Warning: AI agent initialization failed: {e}")
+            new_agent = None
+    return new_agent
 
 # Security
 security = HTTPBearer()
@@ -45,6 +58,9 @@ security = HTTPBearer()
 # Separate sessions for problems and student answers
 problem_session = Session()
 student_answer_session = Session()
+
+# In-memory storage for class sections (fallback when DB isn't configured)
+classes = {}
 
 
 # Pydantic models for OAuth
@@ -459,7 +475,7 @@ async def queue_status():
             status["problems_len"] = None
             status["student_answers_len"] = None
 
-    return status_resp
+    return status
 
 
 @api.get("/api/classes")

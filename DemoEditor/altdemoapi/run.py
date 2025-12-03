@@ -8,4 +8,4 @@ if __name__ == "__main__":
     Running demo api with uvicorn
     \n----------------------------
     """)
-    uvicorn.run(app="api:api", host="localhost", port=8000, reload=True)
+    uvicorn.run(app="api:api", host="localhost", port=8000, reload=False)
