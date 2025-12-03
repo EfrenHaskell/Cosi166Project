@@ -337,6 +337,19 @@ async def create_student_answers(code: dict):
     Now accepts question_id directly (preferred) or falls back to prompt matching
     """
     redis_client = getattr(api.state, "redis", None)
+    print(f"Got input: {code}")
+    student = code["studentEmail"]
+    student_code = code["code"]
+    with open(f"{student}_run.py", "w") as file:
+        file.write(_clean_extra_nl(student_code))
+    out, err = run_sub_process("test.py")
+    template = student_answer_session.agent.run_checker(
+        student_answer_session.prompt,
+        student_code,
+        "python",
+    )
+    student_answer_session.add_answer(student, student_code, template)
+    return {"status": "received", "out": out, "err": err}
 
 
 @api.get('/api/getStudentAnswers')

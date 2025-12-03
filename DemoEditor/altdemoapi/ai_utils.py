@@ -267,6 +267,7 @@ class Agent:
 
     def run_skill_generator(self, skill_map: dict[str, str], debug_path=None):
         output = self.culminate_all(skill_map, debug_path)
+        output = self.categorization_to_dict(output)
         return output
 
     @staticmethod
