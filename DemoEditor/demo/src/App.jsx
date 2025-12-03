@@ -10,21 +10,20 @@ import DarkLightTheme from "./components/DarkLightTheme";
 
 function App() {
   //const { user, loading, isAuthenticated, logout } = useAuth();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(true); // forced for testing student layout
   const [userType, setUserType] = useState("student");
   const [teacherMode, setTeacherMode] = useState(false);
 
-
-  //hardcoding login credentials for now 
+  //hardcoding login credentials for now
   const loginCredentials = {
     student: {
       username: "student",
-      password: "studentpass"
+      password: "studentpass",
     },
     teacher: {
       username: "teacher",
-      password: "teacherpass"
-    }
+      password: "teacherpass",
+    },
   };
 
   const handleLogin = (userType, userName, password) => {
@@ -33,66 +32,68 @@ function App() {
       userName === loginCredentials.teacher.username &&
       password === loginCredentials.teacher.password
     ) {
-      setTeacherMode(true)
-      setIsLoggedIn(true)
-      setUserType("teacher")
-    }
-    else if (
+      setTeacherMode(true);
+      setIsLoggedIn(true);
+      setUserType("teacher");
+    } else if (
       userType === "student" &&
       userName === loginCredentials.student.username &&
       password === loginCredentials.student.password
     ) {
-      setTeacherMode(false)
-      setIsLoggedIn(true)
-      setUserType("student")
-    }
-    else {
-      alert(`The username or password does not match any ${userType} account`)
+      setTeacherMode(false);
+      setIsLoggedIn(true);
+      setUserType("student");
+    } else {
+      alert(`The username or password does not match any ${userType} account`);
     }
   };
 
   const handleLogOut = () => {
-    setIsLoggedIn(false)
-    setTeacherMode(false)
+    setIsLoggedIn(false);
+    setTeacherMode(false);
   };
 
   const handleGoogleLogin = (decodedToken) => {
     // Extract user information from Google token
     const email = decodedToken.email;
     const name = decodedToken.name;
-    
+
     // For now, we'll log them in as a student by default
     // You can customize this logic based on your needs
     setTeacherMode(false);
     setIsLoggedIn(true);
     setUserType("student");
-    
+
     console.log("Google login successful:", { email, name });
   };
 
-
   return (
     <>
-      {!( isLoggedIn) ? (
-        <>
-
-          {<Login onLogin={handleLogin} onGoogleLogin={handleGoogleLogin} />}
-          
-        </>
+      {!isLoggedIn ? (
+        <>{<Login onLogin={handleLogin} onGoogleLogin={handleGoogleLogin} />}</>
       ) : (
         <>
           <DarkLightTheme />
 
-        {/* need to make this its own component too lazy lol*/}
-        <button className = "log-out-button" onClick = {handleLogOut}> Log Out </button>
+          {/* need to make this its own component too lazy lol*/}
+          <button className="log-out-button" onClick={handleLogOut}>
+            {" "}
+            Log Out{" "}
+          </button>
 
-        {teacherMode ? (
-          <TeacherMode teacherMode={teacherMode} setTeacherMode={setTeacherMode}/>
-        ) : (
+          {teacherMode ? (
+            <TeacherMode
+              teacherMode={teacherMode}
+              setTeacherMode={setTeacherMode}
+            />
+          ) : (
+            <div className="class-container">
+              <Sidebar />
+              <MainNotes />
+            </div>
 
-          <StudentMode/>
-        )
-        }
+          
+          )}
         </>
       )}
     </>
