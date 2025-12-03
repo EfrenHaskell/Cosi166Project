@@ -4,7 +4,7 @@ import TimedCodeEditor from "./TimedCodeEditor";
 
 
 
-export default function StudentMode() {
+export default function StudentMode({ email }) {
 
     const [teacherQuestion, setTeacherQuestion] = useState("");
     const [questionId, setQuestionId] = useState(null);
@@ -19,7 +19,7 @@ export default function StudentMode() {
     const [showTimedModal, setShowTimedModal] = useState(false);
     const [pendingQuestion, setPendingQuestion] = useState(null);
     const [pendingDuration, setPendingDuration] = useState(null);
-
+    
     useEffect(() => {
         fetchProblem();
     }, []);
@@ -106,7 +106,9 @@ export default function StudentMode() {
         setPendingDuration(null);
     };
 
-    const submitAnswer = async (codeArg) => {
+    const submitAnswer = async (codeArg, email) => {
+        console.log(email);
+
         if (hasSubmitted) return;
 
         const codeToSend =
@@ -120,8 +122,9 @@ export default function StudentMode() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     studentAnswers: {
-                        code: codeToSend,
-                    },
+                    studentEmail: email,
+                    code: codeToSend,
+                    }
                 }),
             });
 
@@ -160,7 +163,7 @@ export default function StudentMode() {
         console.log("⏰ Time is up!");
         if (!hasSubmitted) {
             console.log("handleTimesUp: calling submitAnswer with current studentCode length:", (studentCode || "").length);
-            submitAnswer(studentCode);
+            submitAnswer(studentCode, email);
             setShowTimedModal(false);
         } else {
             console.log("handleTimesUp: already submitted, skipping submit.");
@@ -342,7 +345,7 @@ export default function StudentMode() {
                                         <TimedCodeEditor
                                             prompt={teacherQuestion}
                                             onCodeChange={setStudentCode}
-                                            onSubmit={(code) => submitAnswer(code)}
+                                            onSubmit={(code) => submitAnswer(code, email)}
                                         />
                                     </div>
                                 </div>

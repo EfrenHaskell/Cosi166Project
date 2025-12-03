@@ -13,6 +13,7 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userType, setUserType] = useState("student");
   const [teacherMode, setTeacherMode] = useState(false);
+  const [userEmail, setEmail] = useState("");
 
 
   //hardcoding login credentials for now 
@@ -60,6 +61,7 @@ function App() {
     // Extract user information from Google token
     const email = decodedToken.email;
     const name = decodedToken.name;
+    setEmail(email);
     
     // For now, we'll log them in as a student by default
     // You can customize this logic based on your needs
@@ -90,7 +92,7 @@ function App() {
           <TeacherMode teacherMode={teacherMode} setTeacherMode={setTeacherMode}/>
         ) : (
 
-          <StudentMode/>
+          <StudentMode studentEmail={userEmail}/>
         )
         }
         </>
