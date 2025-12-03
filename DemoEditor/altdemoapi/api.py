@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 from session import Session
 from redis_client import init_redis, close_redis
-from auth import oauth_service, user_service
+#from auth import oauth_service, user_service
 
 
 # --- Authentication helper models and dependency ---
