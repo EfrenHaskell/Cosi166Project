@@ -20,7 +20,17 @@ class Loader:
 
     @staticmethod
     def load_file(file_nm):
-        with open(file_nm, "r") as file:
+        # Support both absolute paths and paths relative to this module
+        if os.path.isabs(file_nm):
+            path = file_nm
+        else:
+            base = os.path.dirname(__file__)
+            path = os.path.join(base, file_nm)
+            # Fallback to given name if the constructed path doesn't exist
+            if not os.path.exists(path):
+                path = file_nm
+
+        with open(path, "r") as file:
             return yaml.safe_load(file)
 
 

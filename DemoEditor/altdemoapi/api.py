@@ -18,7 +18,6 @@ from pydantic import BaseModel
 
 from session import Session
 from redis_client import init_redis, close_redis
-from auth import oauth_service, user_service
 
 
 # --- Authentication helper models and dependency ---
@@ -121,6 +120,9 @@ def get_agent():
 
 # Dictionary to store questions with their IDs
 questions = {}  # {question_id: {"prompt": str, "answers": [str]}}
+
+# In-memory storage for class sections (fallback when DB isn't configured)
+classes = {}  # {class_id: {"name": str, "section": str, "description": str}}
 
 # Separate sessions for problems and student answers
 problem_session = Session()
@@ -333,29 +335,24 @@ async def get_problem():
 @api.post("/api/studentAnswers")
 async def create_student_answers(code: dict):
     """
-    Route for sending student answers of question to the backend from the front end
-    Now accepts question_id directly (preferred) or falls back to prompt matching
+    Route for sending student answers of question to the backend from the front end.
+    Accepts either a payload { 'studentAnswers': { 'code': ..., 'question_id': ... } }
+    or a flat structure with the fields present.
+    Stores the answer in Redis list `student_answers` or in-memory fallback.
     """
     redis_client = getattr(api.state, "redis", None)
 
+    # Normalize incoming payload
+    payload = None
+    if isinstance(code, dict) and "studentAnswers" in code:
+        payload = code.get("studentAnswers")
+    else:
+        payload = code
 
-@api.get('/api/getStudentAnswers')
-def get_student_answers():
-    """
-    Route to retrieve student answers
-    to be displayed for the teacher
-    :return:
-    """
-    
-    if student_answer_session.has_prompt():
-        answer = student_answer_session.pop_prompt()
-        return {'status': 'answers found', 'answer': answer}
-    # Accept either { 'studentAnswers': { 'code': ..., 'question_id': ... } } or a flat structure
-    payload = code.get("studentAnswers") if isinstance(code, dict) and "studentAnswers" in code else code
     student_code = None
     question_id = None
     if isinstance(payload, dict):
-        student_code = payload.get("code")
+        student_code = payload.get("code") or payload.get("student_code")
         question_id = payload.get("question_id") or payload.get("questionId")
     else:
         student_code = payload
@@ -560,3 +557,59 @@ async def queue_status():
             status_resp["student_answers_len"] = None
 
     return status_resp
+
+
+@api.get("/api/classes")
+async def list_classes():
+    """
+    Return all class sections.
+    """
+    try:
+        # Convert dict values to list
+        all_classes = []
+        for cid, data in classes.items():
+            entry = {"class_id": cid}
+            entry.update(data)
+            all_classes.append(entry)
+        return {"status": "success", "classes": all_classes}
+    except Exception as e:
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"status": "error", "message": str(e)})
+
+
+@api.post("/api/classes")
+async def create_class(payload: dict):
+    """
+    Create a class section. Expects JSON with at least `name`.
+    Returns the generated `class_id`.
+    """
+    try:
+        name = payload.get("name") if isinstance(payload, dict) else None
+        section = payload.get("section") if isinstance(payload, dict) else None
+        description = payload.get("description") if isinstance(payload, dict) else None
+
+        if not name:
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"status": "error", "message": "missing 'name'"})
+
+        class_id = str(uuid.uuid4())
+        classes[class_id] = {"name": name, "section": section or "", "description": description or ""}
+
+        return {"status": "success", "class_id": class_id}
+    except Exception as e:
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"status": "error", "message": str(e)})
+
+
+@api.delete("/api/classes/{class_id}")
+async def delete_class(class_id: str):
+    """
+    Delete a class by id (idempotent).
+    """
+    try:
+        cid = class_id.strip()
+        if cid in classes:
+            del classes[cid]
+            return {"status": "success", "message": "Class deleted"}
+        else:
+            # idempotent - return success even if not found
+            return {"status": "success", "message": "Class not found (treated as deleted)"}
+    except Exception as e:
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"status": "error", "message": str(e)})
