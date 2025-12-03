@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 from session import Session
 from redis_client import init_redis, close_redis
-from auth import oauth_service, user_service
+# from auth import oauth_service, user_service
 
 
 # --- Authentication helper models and dependency ---
@@ -192,7 +192,7 @@ async def peek_problem():
             return {"status": "queue empty"}
         else:
             if problem_session.has_prompt():
-                problem = problem_session.peek_prompt()  # you implement this
+                problem = problem_session.prompt  # you implement this
                 return {
                     "status": "queue has element",
                     "prompt": problem["prompt"],
@@ -204,7 +204,7 @@ async def peek_problem():
     except Exception as e:
         print(f"Redis read failed, falling back to in-memory queue: {e}")
         if problem_session.has_prompt():
-            problem = problem_session.peek_prompt()
+            problem = problem_session.prompt
             return {
                 "status": "queue has element",
                 "prompt": problem["prompt"],
@@ -242,10 +242,10 @@ async def create_problem(new_prompt: dict):
         if redis_client is not None:
             await redis_client.rpush("problems", json.dumps(problem_data))
         else:
-            problem_session.queue_prompt(problem_data)
+            problem_session.new_prompt(problem_data)
     except Exception as e:
         print(f"Redis write failed, falling back to in-memory queue: {e}")
-        problem_session.queue_prompt(problem_data)
+        problem_session.new_prompt(problem_data)
 
     return {"status": "received", "question_id": question_id}
 
@@ -303,7 +303,7 @@ async def get_problem():
 
         # fallback to in-memory
         if problem_session.has_prompt():
-            curr = problem_session.pop_prompt()
+            curr = problem_session.prompt
             prompt = None
             duration = None
             question_id = None
@@ -323,7 +323,7 @@ async def get_problem():
     except Exception as e:
         print(f"Error retrieving problem (Redis or in-memory): {e}")
         if problem_session.has_prompt():
-            curr = problem_session.pop_prompt()
+            curr = problem_session.prompt
             prompt = curr.get("prompt") if isinstance(curr, dict) else str(curr)
             question_id = find_question_id_for_prompt(prompt)
             return {"status": "queue has element", "prompt": prompt, "question_id": question_id}
@@ -340,7 +340,7 @@ async def create_student_answers(code: dict):
 
 
 @api.get('/api/getStudentAnswers')
-def get_student_answers():
+async def get_student_answers():
     """
     Route to retrieve student answers
     to be displayed for the teacher
@@ -348,7 +348,7 @@ def get_student_answers():
     """
     
     if student_answer_session.has_prompt():
-        answer = student_answer_session.pop_prompt()
+        answer = student_answer_session.prompt
         return {'status': 'answers found', 'answer': answer}
     # Accept either { 'studentAnswers': { 'code': ..., 'question_id': ... } } or a flat structure
     payload = code.get("studentAnswers") if isinstance(code, dict) and "studentAnswers" in code else code
