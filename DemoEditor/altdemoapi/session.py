@@ -3,19 +3,11 @@ import ai_utils
 
 class Session:
     def __init__(self):
-        self.prompts: list[str] = []
-        self.answers: dict[str, tuple[str, str]] = {}
+        self.prompt = ""
+        self.answers: dict[str, str] = {}
 
-    def queue_prompt(self, prompt: str):
-        self.prompts.append(prompt)
-
-    def pop_prompt(self) -> str:
-        return self.prompts.pop(0)
+    def new_prompt(self, prompt: str):
+        self.prompt = prompt
 
     def has_prompt(self) -> bool:
-        return len(self.prompts) > 0
-    
-    def peek_prompt(self):
-        if self.prompts:
-            return self.prompts[0]
-        return None
+        return self.prompt != ""
