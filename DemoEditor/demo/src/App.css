@@ -191,27 +191,229 @@ textarea {
 .note:hover {
   background-color: aqua;
 }
+*/
+
+.class-container {
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+  border: 3px solid black;
+  /* align-items: flex-start; */
+  margin-top: 40px;
+  width: 1300px;
+  height: 760px;
+}
+
+/* When used inside the class-container, ensure sidebar is in-flow */
+.class-container .sideBar {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: 280px;
+  max-width: 320px;
+  height: auto;
+}
+
+.sideBar {
+  /* position: fixed; */
+  left: 20px;
+  top: 90px;
+  width: 220px;
+  max-width: 28%;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  z-index: 400;
+  overflow: auto;
+  height: calc(100vh - 120px);
+}
+
+.sidebar_header {
+  margin-bottom: 10px;
+}
+
+.sidebar_header h1 {
+  font-size: 1.15rem;
+  margin: 0;
+  color: #222;
+}
+
+.notes {
+  /* max-height: calc(100vh - 160px); */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.note:hover {
+  background-color: aqua;
+}
 
 .note {
-  margin: 25px 12px 5px 10px;
-  padding: 25px;
-  cursor: pointer;
-  border: 1px solid black;
-  border-radius: 250px;
+  flex: 0 0 auto;
+  width: 220px;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  background: #f8f9fb;
+  border: 1px solid #e6e9ef;
 }
 
 .note_title {
   display: flex;
   justify-content: space-between;
-} */
+  align-items: center;
+}
 
+.note_title .title {
+  margin: 0;
+  font-weight: 600;
+  color: #0b2545;
+}
 
-.log-out-button {
-  background-color: #727064;
-  position: fixed;
-  bottom: 0px;
-  right: 0px;
+.note_content {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
+.note_content button {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #cfd8e3;
+  background: #ffffff;
+  color: #0b2545;
+  cursor: pointer;
+  text-align: left;
+}
+
+.note_content button:hover {
+  background: #f1f5f9;
+}
+
+/* Responsive: make sidebar flow with page on small screens */
+@media (max-width: 900px) {
+  .sideBar {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    margin: 0 0 1rem 0;
+    box-shadow: none;
+    padding: 12px;
+  }
+}
+
+/* main note css */
+.main {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  width: 900px;
+  border: 3px solid black;
+  background: transparent;
+}
+
+/* left column: note metadata / title */
+.note_writing {
+  width: 310px;
+  max-width: 38%;
+  background: #fff;
+  border: 1px solid #e6e9ef;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: auto;
+}
+
+.note_writing input#title {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cfd8e3;
+  border-radius: 8px;
+  font-size: 1rem;
+  outline: none;
+}
+
+/* right column: main note body */
+#body {
+  flex: 1 1 auto;
+  min-height: calc(100vh - 160px);
+  padding: 18px;
+  border-radius: 10px;
+  border: 1px solid #e6e9ef;
+  resize: vertical;
+  font-size: 1rem;
+  line-height: 1.5;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.02);
+}
+
+/* If the sidebar is fixed on wide screens, offset the main content so it doesn't sit underneath */
+@media (min-width: 901px) {
+  .main {
+    margin-left: 200px;
+    /* matches sidebar width + spacing */
+  }
+}
+
+/* Stack layout on smaller screens */
+@media (max-width: 900px) {
+  .main {
+    flex-direction: column;
+    padding: 12px;
+  }
+
+  .note_writing {
+    width: 100%;
+    max-width: none;
+  }
+
+  #body {
+    min-height: 50vh;
+    width: 100%;
+  }
+}
+
+.note_box {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #e6e9ef;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+}
+
+.note_box .note_writing {
+  padding: 0;
+  /* keep title area minimal */
+  background: transparent;
+  border: none;
+}
+
+.note_box input#title {
+  padding: 10px 12px;
+}
+
+.note_box textarea#body {
+  width: 100%;
+  min-height: 75vh;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #e6e9ef;
+  resize: vertical;
 }
 
 
@@ -507,5 +709,92 @@ select:focus {
   .login-container form {
     width: 90%;
     padding: 30px 20px;
+  }
+}
+
+.log-out-button {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  background-color: #727064;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  z-index: 1200;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+}
+
+@media (max-width: 900px) {
+  .log-out-button {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin: 8px 0;
+  }
+}
+
+@media (min-width: 901px) {
+
+  .teacher-mode,
+  .student-mode,
+  .main-content {
+    margin-left: 280px;
+    /* reduce from 300 to sit closer to the sidebar */
+    /* leave room for the fixed sidebar */
+  }
+}
+
+/* Make the note box take more space and be larger */
+.note_box {
+  flex: 1 1 auto;
+  /* allow it to grow to available width */
+  max-width: none;
+  min-width: 320px;
+}
+
+/* increase textarea size for more visible editing area */
+.note_box textarea#body {
+  min-height: 75vh;
+  /* bigger editing area */
+}
+
+/* Overrides to ensure .class-container layout works despite earlier conflicting rules */
+.class-container>.sideBar {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  width: 280px !important;
+  max-width: 320px !important;
+  height: auto !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06) !important;
+  overflow: visible !important;
+}
+
+.class-container>.main {
+  margin-left: 0 !important;
+  width: calc(100% - 320px) !important;
+  max-width: none !important;
+  padding-top: 20px !important;
+}
+
+/* Ensure note box fills available space */
+.class-container .note_box {
+  width: 100% !important;
+}
+
+/* Small screens: stack */
+@media (max-width: 900px) {
+  /* .class-container {
+    flex-direction: column !important;
+  } */
+
+  .class-container>.sideBar {
+    width: 100% !important;
+  }
+
+  .class-container>.main {
+    width: 100% !important;
   }
 }

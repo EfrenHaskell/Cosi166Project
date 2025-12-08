@@ -356,6 +356,8 @@ export default function StudentMode({ email }) {
                 </div>
             )}
 
+            
+
             <h2>Student Mode</h2>
             {teacherQuestion ?
                 (<div style={{ width: '100%', textAlign: 'center', marginBottom: '1.2rem' }}>
