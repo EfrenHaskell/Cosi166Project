@@ -182,7 +182,7 @@ async def peek_problem():
             return {"status": "queue empty"}
         else:
             if problem_session.has_prompt():
-                problem = problem_session.peek_prompt()  # you implement this
+                problem = problem_session.prompt  # you implement this
                 return {
                     "status": "queue has element",
                     "prompt": problem["prompt"],
@@ -194,7 +194,7 @@ async def peek_problem():
     except Exception as e:
         print(f"Redis read failed, falling back to in-memory queue: {e}")
         if problem_session.has_prompt():
-            problem = problem_session.peek_prompt()
+            problem = problem_session.prompt
             return {
                 "status": "queue has element",
                 "prompt": problem["prompt"],
@@ -227,10 +227,10 @@ async def create_problem(new_prompt: dict):
         if redis_client is not None:
             await redis_client.rpush("problems", json.dumps(problem_data))
         else:
-            problem_session.queue_prompt(problem_data)
+            problem_session.new_prompt(problem_data)
     except Exception as e:
         print(f"Redis write failed, falling back to in-memory queue: {e}")
-        problem_session.queue_prompt(problem_data)
+        problem_session.new_prompt(problem_data)
 
     return {"status": "received"}
 
@@ -256,7 +256,7 @@ async def get_problem():
             return {"status": "queue empty"}
         else:
             if problem_session.has_prompt():
-                problem = problem_session.pop_prompt()
+                problem = problem_session.prompt
                 return {
                     "status": "queue has element",
                     "prompt": problem["prompt"],
@@ -267,7 +267,7 @@ async def get_problem():
     except Exception as e:
         print(f"Redis read failed, falling back to in-memory queue: {e}")
         if problem_session.has_prompt():
-            problem = problem_session.pop_prompt()
+            problem = problem_session.prompt
             return {
                 "status": "queue has element",
                 "prompt": problem["prompt"],
@@ -285,8 +285,8 @@ async def create_student_answers(code: dict):
     """
     redis_client = getattr(api.state, "redis", None)
     print(f"Got input: {code}")
-    student = code["studentEmail"]
-    student_code = code["code"]
+    student = code["studentAnswers"]["studentEmail"]
+    student_code = code["studentAnswers"]["code"]
     with open(f"{student}_run.py", "w") as file:
         file.write(_clean_extra_nl(student_code))
     out, err = run_sub_process("test.py")
@@ -296,6 +296,7 @@ async def create_student_answers(code: dict):
         "python",
     )
     student_answer_session.add_answer(student, student_code, template)
+    student_answer_session.print_answers()
     return {"status": "received", "out": out, "err": err}
 
 
@@ -320,60 +321,60 @@ async def get_student_answers():
 
     return {'status': 'received'}
 
-    # Normalize incoming payload
-    payload = None
-    if isinstance(code, dict) and "studentAnswers" in code:
-        payload = code.get("studentAnswers")
-    else:
-        payload = code
+    # # Normalize incoming payload
+    # payload = None
+    # if isinstance(code, dict) and "studentAnswers" in code:
+    #     payload = code.get("studentAnswers")
+    # else:
+    #     payload = code
 
-    student_code = None
-    question_id = None
-    if isinstance(payload, dict):
-        student_code = payload.get("code") or payload.get("student_code")
-        question_id = payload.get("question_id") or payload.get("questionId")
-    else:
-        student_code = payload
+    # student_code = None
+    # question_id = None
+    # if isinstance(payload, dict):
+    #     student_code = payload.get("code") or payload.get("student_code")
+    #     question_id = payload.get("question_id") or payload.get("questionId")
+    # else:
+    #     student_code = payload
 
-    store_obj = {"code": student_code, "question_id": question_id}
+    # store_obj = {"code": student_code, "question_id": question_id}
 
-    try:
-        if redis_client is not None:
-            await redis_client.rpush("student_answers", json.dumps(store_obj))
-        else:
-            student_answer_session.queue_prompt(store_obj)
-        return {"status": "received"}
-    except Exception as e:
-        print(f"Failed to store student answer in Redis, falling back to memory: {e}")
-        student_answer_session.queue_prompt(store_obj)
-        return {"status": "received", "fallback": True}
+    # try:
+    #     if redis_client is not None:
+    #         await redis_client.rpush("student_answers", json.dumps(store_obj))
+    #     else:
+    #         student_answer_session.queue_prompt(store_obj)
+    #     return {"status": "received"}
+    # except Exception as e:
+    #     print(f"Failed to store student answer in Redis, falling back to memory: {e}")
+    #     student_answer_session.queue_prompt(store_obj)
+    #     return {"status": "received", "fallback": True}
 
 
-@api.get("/api/getStudentAnswers")
-async def get_student_answers():
-    """
-    Route to retrieve all questions and their student answers to be displayed for the teacher
-    """
-    redis_client = getattr(api.state, "redis", None)
-    try:
-        if redis_client is not None:
-            ans = await redis_client.lpop("student_answers")
-            if ans is not None:
-                return {'status': 'answers found', 'answer': ans}
-            return {'status': 'answer not found'}
-        else:
-            if student_answer_session.has_prompt():
-                answer = student_answer_session.pop_prompt()
-                return {'status': 'answers found', 'answer' : answer}
-            else:
-                return {'status': 'answer not found'}
-    except Exception as e:
-        print(f"Redis read failed for student answers, falling back: {e}")
-        if student_answer_session.has_prompt():
-            answer = student_answer_session.pop_prompt()
-            return {'status': 'answers found', 'answer' : answer}
-        else:
-            return {'status': 'answer not found'}
+# @api.get("/api/getStudentAnswers")
+# async def get_student_answers():
+#     """
+#     Route to retrieve all questions and their student answers to be displayed for the teacher
+#     """
+#     redis_client = getattr(api.state, "redis", None)
+#     try:
+#         if redis_client is not None:
+#             ans = await redis_client.lpop("student_answers")
+#             if ans is not None:
+#                 return {'status': 'answers found', 'answer': ans}
+#             return {'status': 'answer not found'}
+#         else:
+#             if student_answer_session.has_prompt():
+#                 answer = student_answer_session.prompt
+#                 return {'status': 'answers found', 'answer' : answer}
+#             else:
+#                 return {'status': 'answer not found'}
+#     except Exception as e:
+#         print(f"Redis read failed for student answers, falling back: {e}")
+#         if student_answer_session.has_prompt():
+#             answer = student_answer_session.prompt
+#             return {'status': 'answers found', 'answer' : answer}
+#         else:
+#             return {'status': 'answer not found'}
 
 
 # OAuth Authentication Endpoints

@@ -1,6 +1,10 @@
 ai_context: 'help me understand what is wrong with my code without giving me the correct
   code in a section labeled problems and give me a list of skills I can work on to
-  not make the same mistakes in a section labeled skills; however, if the code looks
+  not make the same mistakes in a section labeled skills using the structure:
+                **Problems:**
+                    ...
+                **Skills:**
+                    ...; however, if the code looks
   correct then respond with the word "correct"'
 ai_sample_inc: 6
 test_file_dir: test_files

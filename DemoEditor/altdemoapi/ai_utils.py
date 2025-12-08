@@ -104,6 +104,8 @@ class ResponseTemplate:
                     ...
         """
 
+        print(self.text)
+
         if len(self.text) == 0 or self.text is None:
             raise Exception(load.ERRORS.null_response)
         else:
@@ -112,9 +114,9 @@ class ResponseTemplate:
             for line in lines:
                 if line.isspace():
                     continue
-                elif line == "**Problems:**":
+                elif "problems:" in line.lower():
                     curr_section = self.problem_section
-                elif line == "**Skills:**":
+                elif "skills:" in line.lower():
                     curr_section = self.skill_section
                 elif curr_section is None:
                     raise Exception(load.ERRORS.ai_response_format)
