@@ -296,7 +296,6 @@ async def create_student_answers(code: dict):
         "python",
     )
     student_answer_session.add_answer(student, student_code, template)
-    student_answer_session.print_answers()
     return {"status": "received", "out": out, "err": err}
 
 
