@@ -1,13 +1,11 @@
 import React from "react";
 import { useState } from "react";
-import StudentMode from "./StudentMode";
 
-const Sidebar = () => {
+const Sidebar = ({ setStudentModalOpen }) => {
   const [open, setOpen] = useState(false);
 
-
   const openCodeQuestion = () => {
-    window.open("/student", "_blank");
+    if (typeof setStudentModalOpen === "function") setStudentModalOpen(true);
   };
 
   return (
@@ -29,8 +27,6 @@ const Sidebar = () => {
           {open && (
             <div className="note_content">
               <button onClick={openCodeQuestion}>Code Question</button>
-              {/* <button>Text Question</button>
-              <button>Question</button> */}
             </div>
           )}
         </div>
