@@ -214,12 +214,20 @@ async def create_problem(new_prompt: dict):
     """
     prompt = new_prompt["prompt"]
     duration: Optional[int] = new_prompt.get("duration")  # seconds or None
+    expected_students: int = new_prompt.get("expected_students", 0)
 
+    # Generate a question ID
+    question_id = str(uuid.uuid4())
+    
     # Bundle them into one object
     problem_data = {
+        "question_id": question_id,
         "prompt": prompt,
         "duration": duration,
     }
+    
+    # Start tracking this question in the session
+    student_answer_session.start_question(question_id, duration, expected_students)
     
     # Try to write to Redis, fallback to in-memory session if Redis unavailable
     redis_client = getattr(api.state, "redis", None)
@@ -232,7 +240,7 @@ async def create_problem(new_prompt: dict):
         print(f"Redis write failed, falling back to in-memory queue: {e}")
         problem_session.new_prompt(problem_data)
 
-    return {"status": "received"}
+    return {"status": "received", "question_id": question_id}
 
 
 @api.get("/api/getProblem")
@@ -352,6 +360,60 @@ async def end_session():
         
     except Exception as e:
         print(f"Error in end_session: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+@api.get('/api/questionStatus')
+async def get_question_status():
+    """
+    Get the status of the currently active question.
+    Used by the teacher to display timer and see student response count.
+    
+    Returns:
+    {
+        "active": bool,
+        "question_id": str or None,
+        "duration": int or None (seconds),
+        "time_remaining": float or None (seconds),
+        "responses_received": int,
+        "expected_students": int,
+        "all_responded": bool
+    }
+    """
+    try:
+        status = student_answer_session.get_question_status()
+        return status
+    except Exception as e:
+        print(f"Error getting question status: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+@api.post('/api/endQuestionSession')
+async def end_question_session(data: dict = None):
+    """
+    Manually end the current question session (called by teacher or when all students respond).
+    Clears the question and marks it as complete.
+    
+    Returns:
+    {
+        "status": "success",
+        "message": "Question session ended"
+    }
+    """
+    try:
+        student_answer_session.end_question()
+        return {
+            "status": "success",
+            "message": "Question session ended"
+        }
+    except Exception as e:
+        print(f"Error ending question session: {e}")
         return {
             "status": "error",
             "message": str(e)
