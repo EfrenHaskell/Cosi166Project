@@ -351,7 +351,7 @@ async def end_session():
         
         # Use the agent's skill generator to categorize skills
         categorized_skills = agent.run_skill_generator(skill_map)
-        
+        print(categorized_skills)
         return {
             "status": "success",
             "categorized_skills": categorized_skills,
