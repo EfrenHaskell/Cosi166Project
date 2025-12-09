@@ -117,8 +117,13 @@ function AddclassModal({ onClose }) {
                 <li key={c.class_id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px", borderBottom: "1px solid #eee" }}>
                   <div>
                     <strong>{c.name}</strong>
-                    {c.section ? <div style={{ color: "#666", fontSize: "0.9rem" }}>{c.section}</div> : null}
+                    {c.section ? <div style={{ color: "#666", fontSize: "0.9rem" }}>Section: {c.section}</div> : null}
                     {c.description ? <div style={{ color: "#666", fontSize: "0.9rem" }}>{c.description}</div> : null}
+                    {c.join_code ? (
+                      <div style={{ color: "#007bff", fontSize: "0.85rem", fontWeight: "600", marginTop: "4px" }}>
+                        Join Code: <span style={{ backgroundColor: "#e7f3ff", padding: "2px 6px", borderRadius: "3px" }}>{c.join_code}</span>
+                      </div>
+                    ) : null}
                   </div>
                   <div>
                     <button onClick={() => handleDelete(c.class_id)} style={{ backgroundColor: "#ff4d4f", color: "#fff", border: "none", borderRadius: 4, padding: "6px 10px" }}>

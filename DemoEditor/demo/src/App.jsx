@@ -4,6 +4,7 @@ import "./App.css";
 import Login from "./components/Login";
 import TeacherMode from "./components/TeacherMode";
 import StudentMode from "./components/StudentMode";
+import StudentLandingPage from "./components/StudentLandingPage";
 import MainNotes from "./components/MainNotes";
 import Sidebar from "./components/Sidebar";
 import DarkLightTheme from "./components/DarkLightTheme";
@@ -14,6 +15,14 @@ function App() {
   const [userType, setUserType] = useState("student");
   const [teacherMode, setTeacherMode] = useState(false);
   const [userEmail, setEmail] = useState("");
+  const [hasJoinedClass, setHasJoinedClass] = useState(() => {
+    // Check if student has already joined a class (persisted in localStorage)
+    return localStorage.getItem("currentClassId") !== null;
+  });
+  const [currentClass, setCurrentClass] = useState(() => {
+    const stored = localStorage.getItem("currentClassId");
+    return stored ? { class_id: stored } : null;
+  });
 
   //hardcoding login credentials for now
   const loginCredentials = {
@@ -52,6 +61,9 @@ function App() {
   const handleLogOut = () => {
     setIsLoggedIn(false);
     setTeacherMode(false);
+    setHasJoinedClass(false);
+    setCurrentClass(null);
+    localStorage.removeItem("currentClassId");
   };
 
   const handleGoogleLogin = (decodedToken) => {
@@ -86,15 +98,26 @@ function App() {
         {teacherMode ? (
           <TeacherMode teacherMode={teacherMode} setTeacherMode={setTeacherMode}/>
         ) : (
-          <div>
-          <StudentMode studentEmail={userEmail}/>
-          <div className="class-container">
-              <Sidebar />
-              <MainNotes />
-            </div>
-          </div>
-        )
-        }
+          <>
+            {!hasJoinedClass ? (
+              <StudentLandingPage 
+                onClassJoined={(classInfo) => {
+                  setHasJoinedClass(true);
+                  setCurrentClass(classInfo);
+                }} 
+                studentEmail={userEmail}
+              />
+            ) : (
+              <div>
+                <StudentMode studentEmail={userEmail}/>
+                <div className="class-container">
+                  <Sidebar />
+                  <MainNotes />
+                </div>
+              </div>
+            )}
+          </>
+        )}
         </>
       )}
     </>
