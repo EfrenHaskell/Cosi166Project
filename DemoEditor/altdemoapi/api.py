@@ -668,6 +668,13 @@ async def queue_status():
     return status
 
 
+def _generate_join_code(length=6):
+    """Generate a random alphanumeric join code for a class."""
+    import random
+    import string
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
+
 @api.get("/api/classes")
 async def list_classes():
     """
@@ -700,9 +707,16 @@ async def create_class(payload: dict):
             return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"status": "error", "message": "missing 'name'"})
 
         class_id = str(uuid.uuid4())
-        classes[class_id] = {"name": name, "section": section or "", "description": description or ""}
+        join_code = _generate_join_code(6)
+        classes[class_id] = {
+            "class_id": class_id,
+            "name": name,
+            "section": section or "",
+            "description": description or "",
+            "join_code": join_code,
+        }
 
-        return {"status": "success", "class_id": class_id}
+        return {"status": "success", "class": classes[class_id]}
     except Exception as e:
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"status": "error", "message": str(e)})
 
@@ -722,3 +736,19 @@ async def delete_class(class_id: str):
             return {"status": "success", "message": "Class not found (treated as deleted)"}
     except Exception as e:
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"status": "error", "message": str(e)})
+
+
+@api.post("/api/joinClass")
+async def join_class(payload: dict):
+    """
+    Join a class using join_code; returns class info if valid.
+    """
+    join_code = payload.get("join_code") if isinstance(payload, dict) else None
+    if not join_code:
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"status": "error", "message": "missing 'join_code'"})
+    
+    for cid, c in classes.items():
+        if c.get("join_code") == join_code:
+            return {"status": "success", "class": c}
+    
+    return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"status": "error", "message": "Invalid join code"})
