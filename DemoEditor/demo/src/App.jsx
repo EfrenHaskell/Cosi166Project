@@ -87,7 +87,7 @@ function App() {
           <TeacherMode teacherMode={teacherMode} setTeacherMode={setTeacherMode}/>
         ) : (
           <div>
-          <StudentMode studentEmail={userEmail}/>
+          <StudentMode email={userEmail}/>
           <div className="class-container">
               <Sidebar />
               <MainNotes />
