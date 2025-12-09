@@ -30,6 +30,22 @@ export default function TeacherMode({ teacherMode, setTeacherMode }) {
   const [expandedQuestionId, setExpandedQuestionId] = useState(null);
   const expandedQuestionIdRef = useRef(null); // Preserve expanded state during refresh
 
+  // Timer and active question tracking
+  const [activeQuestion, setActiveQuestion] = useState(null);
+  const [timeRemaining, setTimeRemaining] = useState(null);
+  const [studentsResponded, setStudentsResponded] = useState(0);
+  const [expectedStudents, setExpectedStudents] = useState(0);
+
+  // Format time in MM:SS format
+  const formatTime = (seconds) => {
+    if (seconds === null || seconds === undefined) return "--:--";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
+  };
+  
   // Save questions to localStorage whenever they change
   useEffect(() => {
     try {
@@ -202,6 +218,72 @@ export default function TeacherMode({ teacherMode, setTeacherMode }) {
 
       return () => clearInterval(interval);
     }
+  }, [teacherMode, fetchStudentAnswers]);
+
+  // Poll question status for timer display and auto-end
+  useEffect(() => {
+    if (!teacherMode) {
+      return;
+    }
+
+    const pollStatus = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/api/questionStatus");
+        const data = await response.json();
+        
+        if (data.active) {
+          setActiveQuestion(data.question_id);
+          setTimeRemaining(data.time_remaining);
+          setStudentsResponded(data.responses_received);
+          setExpectedStudents(data.expected_students);
+          
+          // Auto-end question when all students have responded
+          if (data.all_responded && data.expected_students > 0) {
+            console.log("All students have responded! Auto-ending question session.");
+            await fetch("http://localhost:8000/api/endQuestionSession", {
+              method: "POST",
+            });
+            setActiveQuestion(null);
+            setTimeRemaining(null);
+            
+            // Refresh student answers to show final state
+            setTimeout(() => {
+              fetchStudentAnswers(true);
+            }, 100);
+          }
+          
+          // Auto-end when time is up
+          if (data.time_remaining !== null && data.time_remaining <= 0 && data.duration !== null) {
+            console.log("Time is up! Auto-ending question session.");
+            await fetch("http://localhost:8000/api/endQuestionSession", {
+              method: "POST",
+            });
+            setActiveQuestion(null);
+            setTimeRemaining(null);
+            
+            // Refresh student answers
+            setTimeout(() => {
+              fetchStudentAnswers(true);
+            }, 100);
+          }
+        } else {
+          setActiveQuestion(null);
+          setTimeRemaining(null);
+          setStudentsResponded(0);
+          setExpectedStudents(0);
+        }
+      } catch (error) {
+        console.error("Failed to get question status:", error);
+      }
+    };
+
+    // Poll every 1 second for accurate timer display
+    const interval = setInterval(pollStatus, 1000);
+    
+    // Initial poll
+    pollStatus();
+
+    return () => clearInterval(interval);
   }, [teacherMode, fetchStudentAnswers]);
 
   const toggleQuestion = (questionId) => {
@@ -422,6 +504,72 @@ export default function TeacherMode({ teacherMode, setTeacherMode }) {
               ✅ Submit
             </button>
           </form>
+
+          {/* Active Question Timer Display */}
+          {activeQuestion && (
+            <div
+              style={{
+                marginTop: "1.5rem",
+                marginBottom: "1.5rem",
+                padding: "15px",
+                backgroundColor: "#e3f2fd",
+                border: "2px solid #2196F3",
+                borderRadius: "8px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "20px",
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: "0.95rem", color: "#666", marginBottom: "8px" }}>
+                  <strong>Active Question in Progress</strong>
+                </div>
+                <div style={{ display: "flex", gap: "20px", fontSize: "1rem" }}>
+                  {timeRemaining !== null && (
+                    <div
+                      style={{
+                        fontWeight: "bold",
+                        color: timeRemaining < 60 ? "#d32f2f" : "#2196F3",
+                      }}
+                    >
+                      ⏱️ Time Remaining: {formatTime(timeRemaining)}
+                    </div>
+                  )}
+                  {expectedStudents > 0 && (
+                    <div style={{ color: "#4CAF50", fontWeight: "bold" }}>
+                      👥 Responses: {studentsResponded}/{expectedStudents}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={async () => {
+                  if (
+                    window.confirm("Are you sure you want to end this question session?")
+                  ) {
+                    await fetch("http://localhost:8000/api/endQuestionSession", {
+                      method: "POST",
+                    });
+                    setActiveQuestion(null);
+                    setTimeRemaining(null);
+                    await fetchStudentAnswers(true);
+                  }
+                }}
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#d32f2f",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                }}
+              >
+                ⏹️ End Question
+              </button>
+            </div>
+          )}
 
           <div className="display-Student-Answers">
             <button

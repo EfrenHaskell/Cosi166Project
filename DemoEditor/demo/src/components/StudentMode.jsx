@@ -159,15 +159,45 @@ export default function StudentMode({ email }) {
         fetchProblem();
     };
 
-    const handleTimesUp = () => {
+    const handleTimesUp = async () => {
         console.log("⏰ Time is up!");
         if (!hasSubmitted) {
             console.log("handleTimesUp: calling submitAnswer with current studentCode length:", (studentCode || "").length);
             submitAnswer(studentCode, email);
             setShowTimedModal(false);
+            
+            // Call the API to end the session and categorize skills by competency
+            try {
+                const response = await fetch("http://localhost:8000/api/endSession", {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                });
+                const data = await response.json();
+                console.log("Session end response:", data);
+                
+                if (data.status === "success") {
+                    console.log("Skills categorized by competency:", data.categorized_skills);
+                } else {
+                    console.warn("Failed to categorize skills:", data.message);
+                }
+            } catch (err) {
+                console.error("Error calling end session:", err);
+            }
         } else {
             console.log("handleTimesUp: already submitted, skipping submit.");
             setShowTimedModal(false);
+            
+            // Still call the API even if already submitted
+            try {
+                const response = await fetch("http://localhost:8000/api/endSession", {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" },
+                });
+                const data = await response.json();
+                console.log("Session end response:", data);
+            } catch (err) {
+                console.error("Error calling end session:", err);
+            }
         }
     };
 

@@ -214,12 +214,20 @@ async def create_problem(new_prompt: dict):
     """
     prompt = new_prompt["prompt"]
     duration: Optional[int] = new_prompt.get("duration")  # seconds or None
+    expected_students: int = new_prompt.get("expected_students", 0)
 
+    # Generate a question ID
+    question_id = str(uuid.uuid4())
+    
     # Bundle them into one object
     problem_data = {
+        "question_id": question_id,
         "prompt": prompt,
         "duration": duration,
     }
+    
+    # Start tracking this question in the session
+    student_answer_session.start_question(question_id, duration, expected_students)
     
     # Try to write to Redis, fallback to in-memory session if Redis unavailable
     redis_client = getattr(api.state, "redis", None)
@@ -232,7 +240,7 @@ async def create_problem(new_prompt: dict):
         print(f"Redis write failed, falling back to in-memory queue: {e}")
         problem_session.new_prompt(problem_data)
 
-    return {"status": "received"}
+    return {"status": "received", "question_id": question_id}
 
 
 @api.get("/api/getProblem")
@@ -296,8 +304,120 @@ async def create_student_answers(code: dict):
         "python",
     )
     student_answer_session.add_answer(student, student_code, template)
-    student_answer_session.print_answers()
     return {"status": "received", "out": out, "err": err}
+
+
+@api.get('/api/endSession')
+async def end_session():
+    """
+    Route called when a student session ends (time runs out on the question).
+    Processes student answers from the current session and categorizes skills using AI.
+    
+    Returns:
+        {
+            "status": "success",
+            "categorized_skills": {
+                "category1": ["student1", "student2"],
+                ...
+            }
+        }
+    """
+    try:
+        agent = get_agent()
+        if agent is None:
+            return {
+                "status": "error",
+                "message": "AI agent not initialized"
+            }
+        
+        # Build skill map from student answers in session
+        # Format: {"student_email": "skill1, skill2, skill3, ..."}
+        skill_map = {}
+        
+        for student_id, (student_code, response_template) in student_answer_session.answers.items():
+            # Extract skills from the response template
+            if hasattr(response_template, 'skill_section') and hasattr(response_template.skill_section, 'internal'):
+                # Get all skills for this student
+                skills_dict = response_template.skill_section.internal
+                skills_list = [f"{skill}: {description}" for skill, description in skills_dict.items()]
+                skill_map[student_id] = ", ".join(skills_list)
+        
+        if not skill_map:
+            return {
+                "status": "success",
+                "message": "No student answers to process",
+                "categorized_skills": {}
+            }
+        
+        # Use the agent's skill generator to categorize skills
+        categorized_skills = agent.run_skill_generator(skill_map)
+        
+        return {
+            "status": "success",
+            "categorized_skills": categorized_skills,
+            "total_students": len(skill_map)
+        }
+        
+    except Exception as e:
+        print(f"Error in end_session: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+@api.get('/api/questionStatus')
+async def get_question_status():
+    """
+    Get the status of the currently active question.
+    Used by the teacher to display timer and see student response count.
+    
+    Returns:
+    {
+        "active": bool,
+        "question_id": str or None,
+        "duration": int or None (seconds),
+        "time_remaining": float or None (seconds),
+        "responses_received": int,
+        "expected_students": int,
+        "all_responded": bool
+    }
+    """
+    try:
+        status = student_answer_session.get_question_status()
+        return status
+    except Exception as e:
+        print(f"Error getting question status: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+@api.post('/api/endQuestionSession')
+async def end_question_session(data: dict = None):
+    """
+    Manually end the current question session (called by teacher or when all students respond).
+    Clears the question and marks it as complete.
+    
+    Returns:
+    {
+        "status": "success",
+        "message": "Question session ended"
+    }
+    """
+    try:
+        student_answer_session.end_question()
+        return {
+            "status": "success",
+            "message": "Question session ended"
+        }
+    except Exception as e:
+        print(f"Error ending question session: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 
 @api.get('/api/getStudentAnswers')
