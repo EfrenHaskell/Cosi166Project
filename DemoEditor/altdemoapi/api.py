@@ -11,6 +11,7 @@ import uuid
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import subprocess
+import asyncio
 import re
 from session import Session
 from redis_client import init_redis, close_redis
@@ -51,6 +52,47 @@ def get_agent():
             print(f"Warning: AI agent initialization failed: {e}")
             new_agent = None
     return new_agent
+
+
+async def _schedule_end_of_question(question_id: str, duration: int):
+    """
+    Background task that waits `duration` seconds and then ends the question
+    if it is still active. Also runs categorization like `end_session`.
+    """
+    try:
+        # Sleep for the configured duration
+        await asyncio.sleep(duration)
+
+        # Only proceed if this question is still active
+        if student_answer_session.current_question_id != question_id:
+            print(f"Scheduled end: question {question_id} is no longer active, skipping auto-end.")
+            return
+
+        print(f"Scheduled end: auto-ending question {question_id} after {duration} seconds")
+
+        # Run categorization similar to /api/endSession
+        agent = get_agent()
+        if agent is not None:
+            try:
+                skill_map = {}
+                for student_id, (student_code, response_template) in student_answer_session.answers.items():
+                    if hasattr(response_template, "skill_section") and hasattr(response_template.skill_section, "internal"):
+                        skills_dict = response_template.skill_section.internal
+                        skills_list = [f"{skill}: {description}" for skill, description in skills_dict.items()]
+                        skill_map[student_id] = ", ".join(skills_list)
+
+                if skill_map:
+                    categorized_skills = agent.run_skill_generator(skill_map)
+                    print(f"Auto-categorized skills for question {question_id}: {categorized_skills}")
+            except Exception as e:
+                print(f"Error during auto-categorization for question {question_id}: {e}")
+
+        # Finally end the question session
+        student_answer_session.end_question()
+        print(f"Question {question_id} ended by scheduler.")
+
+    except Exception as e:
+        print(f"Error in scheduled end for question {question_id}: {e}")
 
 # Security
 security = HTTPBearer()
@@ -228,6 +270,12 @@ async def create_problem(new_prompt: dict):
     
     # Start tracking this question in the session
     student_answer_session.start_question(question_id, duration, expected_students)
+    # If duration provided, schedule a server-side auto-end task
+    if duration is not None and duration > 0:
+        try:
+            asyncio.create_task(_schedule_end_of_question(question_id, duration))
+        except Exception as e:
+            print(f"Failed to schedule auto-end for question {question_id}: {e}")
     
     # Try to write to Redis, fallback to in-memory session if Redis unavailable
     redis_client = getattr(api.state, "redis", None)
@@ -351,7 +399,7 @@ async def end_session():
         
         # Use the agent's skill generator to categorize skills
         categorized_skills = agent.run_skill_generator(skill_map)
-        
+        print(categorized_skills)
         return {
             "status": "success",
             "categorized_skills": categorized_skills,
