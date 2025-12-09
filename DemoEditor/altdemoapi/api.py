@@ -389,7 +389,7 @@ async def end_session():
                 skills_dict = response_template.skill_section.internal
                 skills_list = [f"{skill}: {description}" for skill, description in skills_dict.items()]
                 skill_map[student_id] = ", ".join(skills_list)
-        
+        print(student_answer_session.answers.items())
         if not skill_map:
             return {
                 "status": "success",

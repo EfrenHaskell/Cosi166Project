@@ -109,7 +109,7 @@ function App() {
               />
             ) : (
               <div>
-                <StudentMode studentEmail={userEmail}/>
+                <StudentMode email={userEmail}/>
                 <div className="class-container">
                   <Sidebar />
                   <MainNotes />
