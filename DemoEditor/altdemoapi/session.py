@@ -9,6 +9,7 @@ class Session:
         self.answers: dict[str, tuple[str, ai_utils.ResponseTemplate]] = {}
         self.agent = ai_utils.Agent()
         self.skills: dict[str, list[str]] = {}
+        self.num_students = 0
         
         # Track active question metadata
         self.current_question_id: Optional[str] = None
@@ -19,6 +20,9 @@ class Session:
         self.last_response_count: int = 0  # Track previous response count
         self.no_new_responses_threshold: float = 3.0  # seconds of no new responses to trigger auto-end
         
+    def add_student(self):
+        self.num_students += 1
+
     def new_prompt(self, prompt: str):
         self.prompt = prompt
 
