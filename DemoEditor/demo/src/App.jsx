@@ -10,7 +10,7 @@ import DarkLightTheme from "./components/DarkLightTheme";
 
 function App() {
   //const { user, loading, isAuthenticated, logout } = useAuth();
-  const [isLoggedIn, setIsLoggedIn] = useState(true); // forced for testing student layout
+  const [isLoggedIn, setIsLoggedIn] = useState(false); 
   const [userType, setUserType] = useState("student");
   const [teacherMode, setTeacherMode] = useState(false);
   const [userEmail, setEmail] = useState("");
