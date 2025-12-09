@@ -4,7 +4,6 @@ import "./App.css";
 import Login from "./components/Login";
 import TeacherMode from "./components/TeacherMode";
 import StudentMode from "./components/StudentMode";
-import StudentLandingPage from "./components/StudentLandingPage";
 import MainNotes from "./components/MainNotes";
 import Sidebar from "./components/Sidebar";
 import DarkLightTheme from "./components/DarkLightTheme";
@@ -15,7 +14,9 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userType, setUserType] = useState("student");
   const [teacherMode, setTeacherMode] = useState(false);
-  const [userEmail, setEmail] = useState("");
+
+  // modal state for student modal
+  const [studentModalOpen, setStudentModalOpen] = useState(false);
 
   //hardcoding login credentials for now
   const loginCredentials = {
@@ -54,9 +55,6 @@ function App() {
   const handleLogOut = () => {
     setIsLoggedIn(false);
     setTeacherMode(false);
-    setHasJoinedClass(false);
-    setCurrentClass(null);
-    localStorage.removeItem("currentClassId");
   };
 
   const handleGoogleLogin = (decodedToken) => {
@@ -87,18 +85,25 @@ function App() {
             Log Out{" "}
           </button>
 
-        {teacherMode ? (
-          <TeacherMode teacherMode={teacherMode} setTeacherMode={setTeacherMode}/>
-        ) : (
-          <div>
-          <StudentMode email={userEmail}/>
-          <div className="class-container">
-              <Sidebar />
+          {teacherMode ? (
+            <TeacherMode
+              teacherMode={teacherMode}
+              setTeacherMode={setTeacherMode}
+            />
+          ) : (
+            // <StudentMode />
+            <div className="class-container">
+              <Sidebar setStudentModalOpen={setStudentModalOpen} />
               <MainNotes />
             </div>
-          </div>
-        )
-        }
+          )}
+
+          {studentModalOpen && (
+            <StudentModal
+              onClose={() => setStudentModalOpen(false)}
+              handleRefresh={() => console.log("refresh from modal")}
+            />
+          )}
         </>
       )}
     </>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 export default function StudentLandingPage({ onClassJoined, studentEmail }) {
   const [joinCode, setJoinCode] = useState("");
@@ -6,12 +6,34 @@ export default function StudentLandingPage({ onClassJoined, studentEmail }) {
   const [loading, setLoading] = useState(false);
   const [joinedClasses, setJoinedClasses] = useState([]);
 
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("joinedClasses");
+      if (stored) {
+        setJoinedClasses(JSON.parse(stored));
+      }
+    } catch (e) {
+      // ignore parse errors
+      console.warn("Failed to read joinedClasses from localStorage", e);
+    }
+  }, []);
+
   const handleJoinClass = async (e) => {
     e.preventDefault();
     const trimmedCode = joinCode.trim();
-    
+
     if (!trimmedCode) {
       setError("Please enter a join code");
+      return;
+    }
+
+    // Prevent duplicate join attempts for same code
+    if (
+      joinedClasses.some(
+        (c) => c.join_code === trimmedCode || c.code === trimmedCode
+      )
+    ) {
+      setError("You have already joined this class.");
       return;
     }
 
@@ -19,12 +41,15 @@ export default function StudentLandingPage({ onClassJoined, studentEmail }) {
     setError("");
 
     try {
+      const payload = { join_code: trimmedCode };
+      if (studentEmail) payload.studentEmail = studentEmail;
+
       const response = await fetch("http://localhost:8000/api/joinClass", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ join_code: trimmedCode }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -36,17 +61,31 @@ export default function StudentLandingPage({ onClassJoined, studentEmail }) {
       if (result.status === "success" && result.class) {
         // Store joined class info in localStorage
         const classInfo = result.class;
-        const newJoinedClasses = [...joinedClasses, classInfo];
+
+        // normalize class id key name if backend uses different field
+        const classId = classInfo.class_id || classInfo.id || classInfo.classId;
+        const normalized = { ...classInfo, class_id: classId };
+
+        // prevent duplicates
+        const newJoinedClasses = [...joinedClasses, normalized].filter(
+          (v, i, a) => a.findIndex((x) => x.class_id === v.class_id) === i
+        );
+
         setJoinedClasses(newJoinedClasses);
         localStorage.setItem("joinedClasses", JSON.stringify(newJoinedClasses));
-        localStorage.setItem("currentClassId", classInfo.class_id);
+
+        // optionally set current class id
+        if (classId) localStorage.setItem("currentClassId", classId);
 
         setJoinCode("");
-        
+
         // Notify parent that student has joined a class
-        onClassJoined(classInfo);
+        if (typeof onClassJoined === "function") onClassJoined(normalized);
       } else {
-        setError(result.message || "Failed to join class. Check the code and try again.");
+        setError(
+          result.message ||
+            "Failed to join class. Check the code and try again."
+        );
       }
     } catch (err) {
       console.error("Error joining class:", err);
@@ -84,7 +123,10 @@ export default function StudentLandingPage({ onClassJoined, studentEmail }) {
           </div>
 
           {error && (
-            <div className="error-message" style={{ color: "#d9534f", marginTop: "10px" }}>
+            <div
+              className="error-message"
+              style={{ color: "#d9534f", marginTop: "10px" }}
+            >
               {error}
             </div>
           )}
@@ -113,7 +155,12 @@ export default function StudentLandingPage({ onClassJoined, studentEmail }) {
             <h3>Your Classes:</h3>
             {joinedClasses.map((classItem) => (
               <div
-                key={classItem.class_id}
+                key={
+                  classItem.class_id ||
+                  classItem.id ||
+                  classItem.classId ||
+                  Math.random()
+                }
                 style={{
                   padding: "15px",
                   marginBottom: "10px",
