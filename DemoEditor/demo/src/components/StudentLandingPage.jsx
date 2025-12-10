@@ -185,7 +185,6 @@ export default function StudentLandingPage({ onClassJoined, studentEmail }) {
           align-items: center;
           min-height: 100vh;
           padding: 20px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
 
         .landing-container {

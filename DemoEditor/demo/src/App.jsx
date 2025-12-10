@@ -4,6 +4,7 @@ import "./App.css";
 import Login from "./components/Login";
 import TeacherMode from "./components/TeacherMode";
 import StudentMode from "./components/StudentMode";
+import StudentLandingPage from "./components/StudentLandingPage";
 import MainNotes from "./components/MainNotes";
 import Sidebar from "./components/Sidebar";
 import DarkLightTheme from "./components/DarkLightTheme";
@@ -15,6 +16,7 @@ function App() {
   const [userType, setUserType] = useState("student");
   const [email, setEmail] = useState("");
   const [teacherMode, setTeacherMode] = useState(false);
+  const [hasJoinedClass, setHasJoinedClass] = useState(false);
 
   // modal state for student modal
   const [studentModalOpen, setStudentModalOpen] = useState(false);
@@ -56,6 +58,12 @@ function App() {
   const handleLogOut = () => {
     setIsLoggedIn(false);
     setTeacherMode(false);
+    setHasJoinedClass(false);
+  };
+
+  const handleClassJoined = (classInfo) => {
+    console.log("Student joined class:", classInfo);
+    setHasJoinedClass(true);
   };
 
   const handleGoogleLogin = (decodedToken) => {
@@ -92,12 +100,13 @@ function App() {
               teacherMode={teacherMode}
               setTeacherMode={setTeacherMode}
             />
-          ) : (
+          ) : hasJoinedClass ? (
             <StudentMode email={email}/>
-            // <div className="class-container">
-            //   <Sidebar setStudentModalOpen={setStudentModalOpen} />
-            //   <MainNotes />
-            // </div>
+          ) : (
+            <StudentLandingPage 
+              onClassJoined={handleClassJoined} 
+              studentEmail={email}
+            />
           )}
 
           {/* {studentModalOpen && (

@@ -449,10 +449,12 @@ async def end_question_session(data: dict = None):
     }
     
     """
-
+    # End the question session (clears metadata but keeps answers for retrieval)
+    student_answer_session.end_question()
+    
     return {
         "status": "success",
-        "answers": student_answer_session.get_answers()
+        "message": "Question session ended"
     }
 
     # try:

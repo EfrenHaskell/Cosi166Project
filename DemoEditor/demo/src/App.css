@@ -597,13 +597,14 @@ select:focus {
   transform: translate(-50%, -50%);
   width: 92%;
   max-width: 1000px;
-  height: 50%;
-  max-height: 900px;
+  max-height: 80vh;
   background: #fff;
   border-radius: 20px;
   padding: 18px;
   box-shadow: -6px 13px 50px 20px rgba(0, 0, 0, 0.76);
   z-index: 1000;
+  display: flex;
+  flex-direction: column;
 }
 
 .classModal-header {
@@ -612,6 +613,7 @@ select:focus {
   justify-content: space-between;
   border-bottom: 1px solid #eee;
   padding-bottom: 10px;
+  flex-shrink: 0;
 }
 
 .classModal-closeButton {
@@ -624,6 +626,8 @@ select:focus {
 
 .classModal-content {
   margin-top: 8px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 
