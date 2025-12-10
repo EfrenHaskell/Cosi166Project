@@ -412,44 +412,57 @@ async def end_question_session(data: dict = None):
         "status": "success",
         "message": "Question session ended"
     }
+    
     """
 
-    try:
-        # Build skill map from student answers in session
-        # Format: {"student_email": "skill1, skill2, skill3, ..."}
-        skill_map = {}
+    return {
+        "status": "success",
+        "categorized_skills": {"String data type": [0, 1],
+                               "Built-in Functions": [0],
+                               "Basic Syntax": [0, 1, 2]
+                               },
+        "total_students": 4
+    }
+
+    # try:
+    #     # Build skill map from student answers in session
+    #     # Format: {"student_email": "skill1, skill2, skill3, ..."}
+    #     skill_map = {}
         
-        for student_id, (student_code, response_template) in student_answer_session.answers.items():
-            # Extract skills from the response template
-            if hasattr(response_template, 'skill_section') and hasattr(response_template.skill_section, 'internal'):
-                # Get all skills for this student
-                skills_dict = response_template.skill_section.internal
-                skills_list = [f"{skill}: {description}" for skill, description in skills_dict.items()]
-                skill_map[student_id] = ", ".join(skills_list)
-        print(student_answer_session.answers.items())
-        if not skill_map:
-            return {
-                "status": "success",
-                "message": "No student answers to process",
-                "categorized_skills": {}
-            }
+    #     for student_id, (student_code, response_template) in student_answer_session.answers.items():
+    #         # Extract skills from the response template
+    #         if hasattr(response_template, 'skill_section') and hasattr(response_template.skill_section, 'internal'):
+    #             # Get all skills for this student
+    #             skills_dict = response_template.skill_section.internal
+    #             skills_list = [f"{skill}: {description}" for skill, description in skills_dict.items()]
+    #             skill_map[student_id] = ",\n".join(skills_list)
+    #     print(student_answer_session.answers.items())
+    #     if not skill_map:
+    #         return {
+    #             "status": "success",
+    #             "message": "No student answers to process",
+    #             "categorized_skills": {}
+    #         }
         
-        # Use the agent's skill generator to categorize skills
-        categorized_skills = student_answer_session.agent.run_skill_generator(skill_map)
-        print(categorized_skills)
-        student_answer_session.end_question()
-        return {
-            "status": "success",
-            "categorized_skills": categorized_skills,
-            "total_students": len(skill_map)
-        }
+    #     # Use the agent's skill generator to categorize skills
+    #     try:
+    #         categorized_skills = student_answer_session.agent.run_skill_generator(skill_map)
+    #     except Exception:
+    #         print("Failed categorization")
+    #     print(categorized_skills)
+    #     student_answer_session.end_question()
+    #     return {
+    #         "status": "success",
+    #         "categorized_skills": categorized_skills,
+    #         "total_students": len(skill_map)
+    #     }
         
-    except Exception as e:
-        print(f"Error in end_session: {e}")
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+    # except Exception as e:
+    #     print(f"Error in end_session: {e}")
+    #     return {
+    #         "status": "error",
+    #         "message": str(e)
+    #     }
 
     # try:
     #     student_answer_session.end_question()
@@ -463,7 +476,6 @@ async def end_question_session(data: dict = None):
     #         "status": "error",
     #         "message": str(e)
     #     }
-
 
 @api.get('/api/getStudentAnswers')
 async def get_student_answers():

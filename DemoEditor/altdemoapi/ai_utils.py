@@ -186,17 +186,17 @@ class Agent:
     def generate_skills(self, skills, debug_path=None):
         context = """
         The following inputs take the form:
-        index1 {
+        <email> {
             //list of skills
         },
         ...
-        indexn {
+        <email> {
             //list of skills
         }
         
         The output should be of form:
         Category {
-            //all indexes with skills that fit the category
+            //all emails with skills that fit the category
         }
         """
         return self.make_request(instructions=f"You are a categorizing agent\n{context}",
@@ -274,13 +274,17 @@ class Agent:
 
     @staticmethod
     def categorization_to_dict(category_str: str):
+        category_list = category_str.split("\n")
+        print(category_list)
         categories: dict[str, list[str]] = {}
         current_category: str = ""
-        for line in category_str:
+        for line in category_list:
             line = line.strip()
             if line.endswith("{"):
-                current_category = line
+                current_category = line[:-1].strip()
                 categories[current_category] = []
+            elif line == "}":
+                continue
             else:
                 categories[current_category].append(line)
         return categories
