@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import CodeEditor from "./CodeEditor";
 import TimedCodeEditor from "./TimedCodeEditor";
-
+import MainNotes from "./MainNotes";
+import Sidebar from "./Sidebar";
 
 
 export default function StudentMode({ email }) {
@@ -238,14 +239,14 @@ export default function StudentMode({ email }) {
         return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
     };
 
-    if (loading) {
-        return (
-            <div className="content-card">
-                <h2>Student Mode</h2>
-                <div>Loading question...</div>
-            </div>
-        );
-    }
+    // if (loading) {
+    //     return (
+    //         <div className="content-card">
+    //             <h2>Student Mode</h2>
+    //             <div>Loading question...</div>
+    //         </div>
+    //     );
+    // }
 
     return (
 
@@ -386,8 +387,6 @@ export default function StudentMode({ email }) {
                 </div>
             )}
 
-            
-
             <h2>Student Mode</h2>
             {teacherQuestion ?
                 (<div style={{ width: '100%', textAlign: 'center', marginBottom: '1.2rem' }}>
@@ -398,11 +397,15 @@ export default function StudentMode({ email }) {
                     <p>No question asked yet</p>
                     <button id="check-questions-button" style={{ marginBottom: '1rem' }} onClick={handleRefresh}>📋 Check for Questions</button>
                 </div>)}
-            {!showTimedModal && (
+            <div className="class-container">
+                <Sidebar setStudentModalOpen={null} />
+                <MainNotes />
+            </div>
+            {/* {!showTimedModal && (
                 <div style={{ width: "100%", marginBottom: "1.5rem" }}>
                     <CodeEditor prompt={teacherQuestion} />
                 </div>
-            )}
+            )} */}
         </div>
     );
 }

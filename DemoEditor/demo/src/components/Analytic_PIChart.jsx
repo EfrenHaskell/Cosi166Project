@@ -1,10 +1,10 @@
 import React from "react";
 
-export default function Analytic_PIChart({ data = null, size = 280 }) {
+export default function Analytic_PIChart({ data = null, size = 150 }) {
   const sample = [
-    { label: "String data type", value: 50, color: "#4caf50" },
+    { label: "String data type", value: 25, color: "#4caf50" },
     { label: "Built-in Functions", value: 25, color: "#ff9800" },
-    { label: "Basic Syntax", value: 75, color: "#f44336" },
+    { label: "Basic Syntax", value: 25, color: "#f44336" },
     { label: "Perfect", value: 25, color: "blue"}
   ];
 
