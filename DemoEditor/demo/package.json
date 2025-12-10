@@ -15,7 +15,10 @@
     "axios": "^1.12.2",
     "jwt-decode": "^4.0.0",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "react-native-gifted-charts": "^1.4.70",
+    "react-native-linear-gradient": "^2.8.3",
+    "react-native-svg": "^15.15.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
