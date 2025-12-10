@@ -14,18 +14,7 @@ const AnalyticsModal = ({ onClose }) => {
       <div className="AnalyticsModal-content">
         <div style={{ display: "flex", justifyContent: "center", marginTop: 30 }}>
           <Analytic_PIChart />
-
         </div>
-        {/* <Analytic_PIChart /> */}
-
-        {/* <p className="AnalyticsModal-description">
-          Quick summary of classroom activity.
-        </p>
-        <ul className="AnalyticsModal-list">
-          <li>Active students: 12</li>
-          <li>Questions asked: 5</li>
-          <li>Average response time: 1m 24s</li>
-        </ul> */}
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ export default function TeacherMode({ teacherMode, setTeacherMode }) {
   const [inputValue, setInputValue] = useState("");
   const [duration, setDuration] = useState("");
   const [loadingAnswer, setLoadingAnswer] = useState(false);
+  const [data, setData] = useState(null);
   const [questions, setQuestions] = useState(() => {
     // Load from localStorage on mount
     try {
@@ -45,7 +46,7 @@ export default function TeacherMode({ teacherMode, setTeacherMode }) {
       .toString()
       .padStart(2, "0")}`;
   };
-  
+
   // Save questions to localStorage whenever they change
   useEffect(() => {
     try {
@@ -228,41 +229,53 @@ export default function TeacherMode({ teacherMode, setTeacherMode }) {
 
     const pollStatus = async () => {
       try {
-        const response = await fetch("http://localhost:8000/api/questionStatus");
+        const response = await fetch(
+          "http://localhost:8000/api/questionStatus"
+        );
         const data = await response.json();
-        
+
         if (data.active) {
           setActiveQuestion(data.question_id);
           setTimeRemaining(data.time_remaining);
           setStudentsResponded(data.responses_received);
           setExpectedStudents(data.expected_students);
-          
+
           // Auto-end question when all students have responded
           if (data.all_responded && data.expected_students > 0) {
-            console.log("All students have responded! Auto-ending question session.");
+            console.log(
+              "All students have responded! Auto-ending question session."
+            );
             await fetch("http://localhost:8000/api/endQuestionSession", {
               method: "POST",
             });
             setActiveQuestion(null);
             setTimeRemaining(null);
-            
+
             // Refresh student answers to show final state
             setTimeout(() => {
               fetchStudentAnswers(true);
             }, 100);
           }
-          
+
           // Auto-end when time is up
-          if (data.time_remaining !== null && data.time_remaining <= 0 && data.duration !== null) {
+          if (
+            data.time_remaining !== null &&
+            data.time_remaining <= 0 &&
+            data.duration !== null
+          ) {
             console.log("Time is up! Auto-ending question session.");
-            const response = await fetch("http://localhost:8000/api/endQuestionSession", {
-              method: "POST",
-            });
+            const response = await fetch(
+              "http://localhost:8000/api/endQuestionSession",
+              {
+                method: "POST",
+              }
+            );
             const data = await response.json();
             console.log("Session end response:", data);
+            setData(data);
             setActiveQuestion(null);
             setTimeRemaining(null);
-            
+
             // Refresh student answers
             setTimeout(() => {
               fetchStudentAnswers(true);
@@ -281,7 +294,7 @@ export default function TeacherMode({ teacherMode, setTeacherMode }) {
 
     // Poll every 1 second for accurate timer display
     const interval = setInterval(pollStatus, 1000);
-    
+
     // Initial poll
     pollStatus();
 
@@ -481,7 +494,7 @@ export default function TeacherMode({ teacherMode, setTeacherMode }) {
                   Analytics
                 </button>
                 {showAnalytics && (
-                  <AnalyticsModal onClose={() => setShowAnalytics(false)} />
+                  <AnalyticsModal data={data} onClose={() => setShowAnalytics(false)} />
                 )}
               </div>
             )}
@@ -524,7 +537,13 @@ export default function TeacherMode({ teacherMode, setTeacherMode }) {
               }}
             >
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: "0.95rem", color: "#666", marginBottom: "8px" }}>
+                <div
+                  style={{
+                    fontSize: "0.95rem",
+                    color: "#666",
+                    marginBottom: "8px",
+                  }}
+                >
                   <strong>Active Question in Progress</strong>
                 </div>
                 <div style={{ display: "flex", gap: "20px", fontSize: "1rem" }}>
@@ -548,13 +567,19 @@ export default function TeacherMode({ teacherMode, setTeacherMode }) {
               <button
                 onClick={async () => {
                   if (
-                    window.confirm("Are you sure you want to end this question session?")
+                    window.confirm(
+                      "Are you sure you want to end this question session?"
+                    )
                   ) {
-                    const response = await fetch("http://localhost:8000/api/endQuestionSession", {
-                      method: "POST",
-                    });
+                    const response = await fetch(
+                      "http://localhost:8000/api/endQuestionSession",
+                      {
+                        method: "POST",
+                      }
+                    );
                     const data = await response.json();
                     console.log("Session end response:", data);
+                    setData(data);
                     setActiveQuestion(null);
                     setTimeRemaining(null);
                     await fetchStudentAnswers(true);
