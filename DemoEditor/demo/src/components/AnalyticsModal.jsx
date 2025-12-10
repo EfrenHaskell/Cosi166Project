@@ -12,7 +12,11 @@ const AnalyticsModal = ({ onClose }) => {
       </div>
 
       <div className="AnalyticsModal-content">
-        <Analytic_PIChart />
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 30 }}>
+          <Analytic_PIChart />
+
+        </div>
+        {/* <Analytic_PIChart /> */}
 
         {/* <p className="AnalyticsModal-description">
           Quick summary of classroom activity.
