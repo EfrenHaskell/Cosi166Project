@@ -255,9 +255,11 @@ export default function TeacherMode({ teacherMode, setTeacherMode }) {
           // Auto-end when time is up
           if (data.time_remaining !== null && data.time_remaining <= 0 && data.duration !== null) {
             console.log("Time is up! Auto-ending question session.");
-            await fetch("http://localhost:8000/api/endQuestionSession", {
+            const response = await fetch("http://localhost:8000/api/endQuestionSession", {
               method: "POST",
             });
+            const data = await response.json();
+            console.log("Session end response:", data);
             setActiveQuestion(null);
             setTimeRemaining(null);
             
@@ -548,9 +550,11 @@ export default function TeacherMode({ teacherMode, setTeacherMode }) {
                   if (
                     window.confirm("Are you sure you want to end this question session?")
                   ) {
-                    await fetch("http://localhost:8000/api/endQuestionSession", {
+                    const response = await fetch("http://localhost:8000/api/endQuestionSession", {
                       method: "POST",
                     });
+                    const data = await response.json();
+                    console.log("Session end response:", data);
                     setActiveQuestion(null);
                     setTimeRemaining(null);
                     await fetchStudentAnswers(true);

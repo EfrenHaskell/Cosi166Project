@@ -93,19 +93,19 @@ function App() {
               setTeacherMode={setTeacherMode}
             />
           ) : (
-            // <StudentMode />
-            <div className="class-container">
-              <Sidebar setStudentModalOpen={setStudentModalOpen} />
-              <MainNotes />
-            </div>
+            <StudentMode email={email}/>
+            // <div className="class-container">
+            //   <Sidebar setStudentModalOpen={setStudentModalOpen} />
+            //   <MainNotes />
+            // </div>
           )}
 
-          {studentModalOpen && (
+          {/* {studentModalOpen && (
             <StudentModal
               onClose={() => setStudentModalOpen(false)}
               email={email}
             />
-          )}
+          )} */}
         </>
       )}
     </>

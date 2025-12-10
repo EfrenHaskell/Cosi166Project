@@ -175,8 +175,6 @@ export default function StudentMode({ email }) {
           method: "GET",
           headers: { "Content-Type": "application/json" },
         });
-        const data = await response.json();
-        console.log("Session end response:", data);
 
         if (data.status === "success") {
           console.log(
@@ -396,247 +394,12 @@ export default function StudentMode({ email }) {
 // - email: string
 export const StudentModal = ({
   onClose,
+  teacherQuestion = "",
+  handleRefresh = () => {},
+  showTimedModal = false,
+  submitAnswer = () => {},
   email,
 }) => {
-  const [teacherQuestion, setTeacherQuestion] = useState("");
-  const [questionId, setQuestionId] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [timeLimit, setTimeLimit] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(null);
-  const [showWarning, setShowWarning] = useState(false);
-  const [studentCode, setStudentCode] = useState("");
-  const [hasSubmitted, setHasSubmitted] = useState(false);
-  const [showTimedModal, setShowTimedModal] = useState(false);
-  const [pendingQuestion, setPendingQuestion] = useState(null);
-  const [pendingDuration, setPendingDuration] = useState(null);
-
-  useEffect(() => {
-    fetchProblem();
-  }, []);
-
-  const fetchProblem = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("http://localhost:8000/api/peekProblem");
-      const result = await response.json();
-      console.log("Peeked problem:", result);
-
-      if (result.status !== "queue empty") {
-        const duration = result.duration;
-        console.log("Time (seconds):", duration);
-
-        if (duration != null && duration > 0) {
-          setPendingQuestion(result.prompt);
-          setPendingDuration(duration);
-          // reset submission state for the new incoming timed quiz
-          setHasSubmitted(false);
-          setShowTimedModal(true);
-        } else {
-          await fetch("http://localhost:8000/api/getProblem");
-
-          setTeacherQuestion(result.prompt);
-          setTimeLimit(null);
-          setTimeLeft(null);
-          setShowWarning(false);
-
-          setPendingQuestion(null);
-          setPendingDuration(null);
-          setShowTimedModal(false);
-        }
-      } else {
-        setTeacherQuestion("");
-        setTimeLimit(null);
-        setTimeLeft(null);
-        setShowWarning(false);
-        setPendingQuestion(null);
-        setPendingDuration(null);
-        setShowTimedModal(false);
-      }
-    } catch (error) {
-      console.error("Failed to fetch problem:", error);
-      setTeacherQuestion("");
-      setTimeLimit(null);
-      setTimeLeft(null);
-      setShowWarning(false);
-      setPendingQuestion(null);
-      setPendingDuration(null);
-      setShowTimedModal(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleStartQuiz = async () => {
-    if (!pendingQuestion) return;
-
-    await fetch("http://localhost:8000/api/getProblem");
-
-    setTeacherQuestion(pendingQuestion);
-
-    // new quiz started — ensure submission state is reset
-    setHasSubmitted(false);
-
-    if (pendingDuration != null) {
-      setTimeLimit(pendingDuration);
-      setTimeLeft(pendingDuration);
-      setShowWarning(false);
-    } else {
-      setTimeLimit(null);
-      setTimeLeft(null);
-      setShowWarning(false);
-    }
-
-    setPendingQuestion(null);
-    setPendingDuration(null);
-  };
-
-  const handleCancelQuiz = () => {
-    setShowTimedModal(false);
-    setPendingQuestion(null);
-    setPendingDuration(null);
-  };
-
-  const submitAnswer = async (codeArg, email) => {
-    console.log(email);
-
-    if (hasSubmitted) return;
-
-    const codeToSend =
-      codeArg !== undefined && codeArg !== null ? codeArg : studentCode ?? "";
-
-    console.log("Submitting student answer length:", (codeToSend || "").length);
-
-    try {
-      const res = await fetch("http://localhost:8000/api/studentAnswers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentAnswers: {
-            studentEmail: email,
-            code: codeToSend,
-          },
-        }),
-      });
-
-      console.log("Submit HTTP status:", res.status, "ok:", res.ok);
-      let data = null;
-      try {
-        data = await res.json();
-      } catch (parseErr) {
-        const text = await res.text();
-        console.warn(
-          "Failed to parse JSON response from /api/studentAnswers, raw text:",
-          text,
-          parseErr
-        );
-        data = { raw: text };
-      }
-
-      console.log("Answer submit response:", data);
-
-      if (res.ok) {
-        setHasSubmitted(true);
-        alert("Your answer has been submitted.");
-        setShowTimedModal(false);
-      } else {
-        alert("Submission failed. Check console and try again.");
-      }
-    } catch (err) {
-      console.error("Failed to submit student answer:", err);
-      alert("Failed to submit your answer. Please try again.");
-    }
-    setTeacherQuestion("");
-  };
-
-  const handleRefresh = () => {
-    fetchProblem();
-  };
-
-  const handleTimesUp = async () => {
-    console.log("⏰ Time is up!");
-    if (!hasSubmitted) {
-      console.log(
-        "handleTimesUp: calling submitAnswer with current studentCode length:",
-        (studentCode || "").length
-      );
-      submitAnswer(studentCode, email);
-      setShowTimedModal(false);
-
-      // Call the API to end the session and categorize skills by competency
-      try {
-        const response = await fetch("http://localhost:8000/api/endSession", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
-        const data = await response.json();
-        console.log("Session end response:", data);
-
-        if (data.status === "success") {
-          console.log(
-            "Skills categorized by competency:",
-            data.categorized_skills
-          );
-        } else {
-          console.warn("Failed to categorize skills:", data.message);
-        }
-      } catch (err) {
-        console.error("Error calling end session:", err);
-      }
-    } else {
-      console.log("handleTimesUp: already submitted, skipping submit.");
-      setShowTimedModal(false);
-
-      // Still call the API even if already submitted
-      try {
-        const response = await fetch("http://localhost:8000/api/endSession", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
-        const data = await response.json();
-        console.log("Session end response:", data);
-      } catch (err) {
-        console.error("Error calling end session:", err);
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (!teacherQuestion || timeLimit == null) {
-      return;
-    }
-
-    const intervalId = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev == null) return prev;
-
-        const next = prev - 1;
-
-        if (next === 60) {
-          setShowWarning(true);
-        }
-
-        if (next <= 0) {
-          clearInterval(intervalId);
-          handleTimesUp();
-          return 0;
-        }
-
-        return next;
-      });
-    }, 1000);
-
-    return () => clearInterval(intervalId);
-  }, [teacherQuestion, timeLimit, hasSubmitted]);
-
-  const formatTime = (secs) => {
-    if (timeLimit == null) return "Unlimited";
-    if (secs == null) return "--:--";
-
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  };
-
   return (
     <div
       className="modal-backdrop"
@@ -674,6 +437,7 @@ export const StudentModal = ({
           }}
         >
           <h2 className="StudentModal-title" style={{ margin: 0 }}>
+            Student Data
           </h2>
           <button
             className="StudentModal-closeButton"
