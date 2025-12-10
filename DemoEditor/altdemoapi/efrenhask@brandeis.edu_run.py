@@ -1,1 +1,1 @@
-stdout(hello world);
+print("hello world")

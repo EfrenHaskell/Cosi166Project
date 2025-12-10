@@ -1,43 +1,12 @@
 import React from "react";
 
-export default function Analytic_PIChart({ data, size = 280 }) {
-  const palette = [
-    "#4caf50",
-    "#ff9800",
-    "#f44336",
-    "#9c27b0",
-    "#2196f3",
-    "#ffc107",
+export default function Analytic_PIChart({ data = null, size = 280 }) {
+  const sample = [
+    { label: "String data type", value: 50, color: "#4caf50" },
+    { label: "Built-in Functions", value: 25, color: "#ff9800" },
+    { label: "Basic Syntax", value: 75, color: "#f44336" },
+    { label: "Perfect", value: 25, color: "blue"}
   ];
-
-  function transformResponse(resp, { asPercent = false } = {}) {
-    const skills = resp?.categorized_skills || {};
-    const entries = Object.entries(skills);
-    if (!entries.length) return [];
-
-    const totalCount = entries.reduce((s, [, v]) => s + (v || 0), 0) || 1;
-
-    return entries.map(([label, val], i) => {
-      const value = asPercent
-        ? Math.round(((val || 0) / totalCount) * 100)
-        : val || 0;
-      return { label, value, color: palette[i % palette.length] };
-    });
-  }
-
-  // Usage:
-  const resp = {
-    status: "success",
-    categorized_skills: {
-      "String data type": 2,
-      "Built-in Functions": 1,
-      "Basic Syntax": 3,
-    },
-    total_students: 4,
-  };
-
-  console.log(transformResponse(resp)); // counts array
-  console.log(transformResponse(resp, { asPercent: true })); // percentages array
 
   const dataset = data && data.length ? data : sample;
   const total = dataset.reduce((s, d) => s + (d.value || 0), 0) || 1;

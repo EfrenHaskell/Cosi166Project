@@ -259,7 +259,7 @@ async def create_problem(new_prompt: dict):
     expected_students: int = new_prompt.get("expected_students", 0)
 
     # Generate a question ID
-    question_id = str(uuid.uuid4())
+    question_id = 1234
     
     # Bundle them into one object
     problem_data = {
@@ -345,14 +345,14 @@ async def create_student_answers(code: dict):
     student_code = code["studentAnswers"]["code"]
     with open(f"{student}_run.py", "w") as file:
         file.write(_clean_extra_nl(student_code))
-    out, err = run_sub_process("test.py")
+    out, err = run_sub_process(f"{student}_run.py")
     template = student_answer_session.agent.run_checker(
         student_answer_session.prompt,
         student_code,
         "python",
     )
     student_answer_session.add_answer(student, student_code, template)
-    return {"status": "received", "out": out, "err": err}
+    return {"status": "received", "out": out, "err": err, "ai_response": template.text}
 
 
 # @api.get('/api/endSession')
@@ -417,11 +417,7 @@ async def end_question_session(data: dict = None):
 
     return {
         "status": "success",
-        "categorized_skills": {"String data type": [0, 1],
-                               "Built-in Functions": [0],
-                               "Basic Syntax": [0, 1, 2]
-                               },
-        "total_students": 4
+        "answers": student_answer_session.get_answers()
     }
 
     # try:
@@ -463,19 +459,7 @@ async def end_question_session(data: dict = None):
     #         "status": "error",
     #         "message": str(e)
     #     }
-
-    # try:
-    #     student_answer_session.end_question()
-    #     return {
-    #         "status": "success",
-    #         "message": "Question session ended"
-    #     }
-    # except Exception as e:
-    #     print(f"Error ending question session: {e}")
-    #     return {
-    #         "status": "error",
-    #         "message": str(e)
-    #     }
+    
 
 @api.get('/api/getStudentAnswers')
 async def get_student_answers():

@@ -121,3 +121,6 @@ class Session:
         self.last_response_time = None
         self.last_response_count = 0
 
+    def get_answers(self):
+        answers = [self.answers[student][0] for student in self.answers]
+        return answers
