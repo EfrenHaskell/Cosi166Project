@@ -3,6 +3,7 @@ import CodeEditor from "./CodeEditor";
 import TimedCodeEditor from "./TimedCodeEditor";
 import MainNotes from "./MainNotes";
 import Sidebar from "./Sidebar";
+import StudentCodeOutputModal from "./StudentCodeOutputModal";
 
 
 export default function StudentMode({ email }) {
@@ -18,6 +19,10 @@ export default function StudentMode({ email }) {
     const [studentCode, setStudentCode] = useState("");
     const [hasSubmitted, setHasSubmitted] = useState(false);
     const [showTimedModal, setShowTimedModal] = useState(false);
+    const [showOutputModal, setShowOutputModal] = useState(false);
+    const [codeOutput, setCodeOutput] = useState("");
+    const [codeError, setCodeError] = useState("");
+    const [aiResponse, setAiResponse] = useState("");
     const [pendingQuestion, setPendingQuestion] = useState(null);
     const [pendingDuration, setPendingDuration] = useState(null);
     
@@ -143,7 +148,14 @@ export default function StudentMode({ email }) {
 
             if (res.ok) {
                 setHasSubmitted(true);
-                alert("Your answer has been submitted.");
+                // Capture output data and display in modal
+                const output = data.out || "";
+                const error = data.err || "";
+                const feedback = data.ai_response || "";
+                setCodeOutput(output);
+                setCodeError(error);
+                setAiResponse(feedback);
+                setShowOutputModal(true);
                 setShowTimedModal(false);
             } else {
                 alert("Submission failed. Check console and try again.");
@@ -406,6 +418,13 @@ export default function StudentMode({ email }) {
                     <CodeEditor prompt={teacherQuestion} />
                 </div>
             )} */}
+            <StudentCodeOutputModal
+                isOpen={showOutputModal}
+                onClose={() => setShowOutputModal(false)}
+                output={codeOutput}
+                error={codeError}
+                aiResponse={aiResponse}
+            />
         </div>
     );
 }

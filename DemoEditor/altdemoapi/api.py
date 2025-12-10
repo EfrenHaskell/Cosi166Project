@@ -359,7 +359,11 @@ async def create_student_answers(code: dict):
                     student_code,
                     "python",
                 )
-                ai_response = template.text if hasattr(template, 'text') else str(template)
+                # run_checker returns either a string ("Good Job!") or ResponseTemplate object
+                if isinstance(template, str):
+                    ai_response = template
+                else:
+                    ai_response = template.text if hasattr(template, 'text') else str(template)
                 student_answer_session.add_answer(student, student_code, template)
             else:
                 # If no agent, just store the code
