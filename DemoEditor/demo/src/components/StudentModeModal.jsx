@@ -439,7 +439,6 @@ export const StudentModal = ({
           }}
         >
           <h2 className="StudentModal-title" style={{ margin: 0 }}>
-            Student Data
           </h2>
           <button
             className="StudentModal-closeButton"
