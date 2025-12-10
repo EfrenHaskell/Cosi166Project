@@ -270,6 +270,8 @@ async def create_problem(new_prompt: dict):
     
     # Start tracking this question in the session
     student_answer_session.start_question(question_id, duration, expected_students)
+    # Set the prompt in student_answer_session so it's available when retrieving answers
+    student_answer_session.new_prompt(prompt)
     # If duration provided, schedule a server-side auto-end task
     if duration is not None and duration > 0:
         try:

@@ -108,7 +108,7 @@ export default function StudentCodeOutputModal({ isOpen, onClose, output, error,
             align-items: center;
             padding: 20px;
             border-bottom: 2px solid #f0f0f0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #000000;
           }
 
           .modal-header h2 {
