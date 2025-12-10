@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
 
-export default function CodeEditor({ prompt, questionId }) {
+export default function CodeEditor({ prompt, questionId, email }) {
   const editorRef = useRef(null);
   const [output, setOutput] = useState("");
   const [error, setError] = useState("");
