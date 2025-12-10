@@ -233,8 +233,8 @@ async def peek_problem():
             else:
                 return {"status": "queue empty"}
             
-    except Exception as e:
-        print(f"Redis read failed, falling back to in-memory queue: {e}")
+    except Exception:
+        # Silently fall back to in-memory (not an error during normal operation)
         if problem_session.has_prompt():
             problem = problem_session.prompt
             return {
@@ -320,8 +320,8 @@ async def get_problem():
                 }
             else:
                 return {"status": "queue empty"}
-    except Exception as e:
-        print(f"Redis read failed, falling back to in-memory queue: {e}")
+    except Exception:
+        # Silently fall back to in-memory (not an error during normal operation)
         if problem_session.has_prompt():
             problem = problem_session.prompt
             return {
@@ -339,20 +339,49 @@ async def create_student_answers(code: dict):
     Route for sending student answers of question to the backend from the front end
     Now accepts question_id directly (preferred) or falls back to prompt matching
     """
-    redis_client = getattr(api.state, "redis", None)
-    print(f"Got input: {code}")
-    student = code["studentAnswers"]["studentEmail"]
-    student_code = code["studentAnswers"]["code"]
-    with open(f"{student}_run.py", "w") as file:
-        file.write(_clean_extra_nl(student_code))
-    out, err = run_sub_process(f"{student}_run.py")
-    template = student_answer_session.agent.run_checker(
-        student_answer_session.prompt,
-        student_code,
-        "python",
-    )
-    student_answer_session.add_answer(student, student_code, template)
-    return {"status": "received", "out": out, "err": err, "ai_response": template.text}
+    try:
+        print(f"Got input: {code}")
+        student = code["studentAnswers"]["studentEmail"]
+        student_code = code["studentAnswers"]["code"]
+        
+        with open(f"{student}_run.py", "w") as file:
+            file.write(_clean_extra_nl(student_code))
+        
+        out, err = run_sub_process(f"{student}_run.py")
+        
+        # Try to get AI response, but handle gracefully if agent fails
+        ai_response = None
+        try:
+            agent = get_agent()  # Use the safe getter that initializes lazily
+            if agent is not None:
+                template = agent.run_checker(
+                    student_answer_session.prompt,
+                    student_code,
+                    "python",
+                )
+                ai_response = template.text if hasattr(template, 'text') else str(template)
+                student_answer_session.add_answer(student, student_code, template)
+            else:
+                # If no agent, just store the code
+                student_answer_session.add_answer(student, student_code, None)
+        except Exception as e:
+            print(f"Warning: AI analysis failed ({e}), storing answer without AI feedback")
+            student_answer_session.add_answer(student, student_code, None)
+        
+        return {
+            "status": "received",
+            "out": out,
+            "err": err,
+            "ai_response": ai_response or "AI analysis unavailable"
+        }
+    except Exception as e:
+        print(f"Error in create_student_answers: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"status": "error", "message": str(e)}
+        )
 
 
 # @api.get('/api/endSession')

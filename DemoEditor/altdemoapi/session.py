@@ -7,7 +7,7 @@ class Session:
     def __init__(self):
         self.prompt = ""
         self.answers: dict[str, tuple[str, ai_utils.ResponseTemplate]] = {}
-        self.agent = ai_utils.Agent()
+        self.agent = None  # Lazy initialize to avoid failures on import
         self.skills: dict[str, list[str]] = {}
         self.num_students = 0
         
