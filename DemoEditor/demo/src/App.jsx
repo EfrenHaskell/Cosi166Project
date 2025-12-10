@@ -103,7 +103,6 @@ function App() {
           {studentModalOpen && (
             <StudentModal
               onClose={() => setStudentModalOpen(false)}
-              handleRefresh={() => console.log("refresh from modal")}
               email={email}
             />
           )}

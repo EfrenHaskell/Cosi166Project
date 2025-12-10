@@ -355,63 +355,22 @@ async def create_student_answers(code: dict):
     return {"status": "received", "out": out, "err": err}
 
 
-@api.get('/api/endSession')
-async def end_session():
-    """
-    Route called when a student session ends (time runs out on the question).
-    Processes student answers from the current session and categorizes skills using AI.
+# @api.get('/api/endSession')
+# async def end_session():
+#     """
+#     Route called when a student session ends (time runs out on the question).
+#     Processes student answers from the current session and categorizes skills using AI.
     
-    Returns:
-        {
-            "status": "success",
-            "categorized_skills": {
-                "category1": ["student1", "student2"],
-                ...
-            }
-        }
-    """
-    try:
-        agent = get_agent()
-        if agent is None:
-            return {
-                "status": "error",
-                "message": "AI agent not initialized"
-            }
-        
-        # Build skill map from student answers in session
-        # Format: {"student_email": "skill1, skill2, skill3, ..."}
-        skill_map = {}
-        
-        for student_id, (student_code, response_template) in student_answer_session.answers.items():
-            # Extract skills from the response template
-            if hasattr(response_template, 'skill_section') and hasattr(response_template.skill_section, 'internal'):
-                # Get all skills for this student
-                skills_dict = response_template.skill_section.internal
-                skills_list = [f"{skill}: {description}" for skill, description in skills_dict.items()]
-                skill_map[student_id] = ", ".join(skills_list)
-        print(student_answer_session.answers.items())
-        if not skill_map:
-            return {
-                "status": "success",
-                "message": "No student answers to process",
-                "categorized_skills": {}
-            }
-        
-        # Use the agent's skill generator to categorize skills
-        categorized_skills = agent.run_skill_generator(skill_map)
-        print(categorized_skills)
-        return {
-            "status": "success",
-            "categorized_skills": categorized_skills,
-            "total_students": len(skill_map)
-        }
-        
-    except Exception as e:
-        print(f"Error in end_session: {e}")
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+#     Returns:
+#         {
+#             "status": "success",
+#             "categorized_skills": {
+#                 "category1": ["student1", "student2"],
+#                 ...
+#             }
+#         }
+#     """
+    
 
 
 @api.get('/api/questionStatus')
@@ -454,18 +413,56 @@ async def end_question_session(data: dict = None):
         "message": "Question session ended"
     }
     """
+
     try:
+        # Build skill map from student answers in session
+        # Format: {"student_email": "skill1, skill2, skill3, ..."}
+        skill_map = {}
+        
+        for student_id, (student_code, response_template) in student_answer_session.answers.items():
+            # Extract skills from the response template
+            if hasattr(response_template, 'skill_section') and hasattr(response_template.skill_section, 'internal'):
+                # Get all skills for this student
+                skills_dict = response_template.skill_section.internal
+                skills_list = [f"{skill}: {description}" for skill, description in skills_dict.items()]
+                skill_map[student_id] = ", ".join(skills_list)
+        print(student_answer_session.answers.items())
+        if not skill_map:
+            return {
+                "status": "success",
+                "message": "No student answers to process",
+                "categorized_skills": {}
+            }
+        
+        # Use the agent's skill generator to categorize skills
+        categorized_skills = student_answer_session.agent.run_skill_generator(skill_map)
+        print(categorized_skills)
         student_answer_session.end_question()
         return {
             "status": "success",
-            "message": "Question session ended"
+            "categorized_skills": categorized_skills,
+            "total_students": len(skill_map)
         }
+        
     except Exception as e:
-        print(f"Error ending question session: {e}")
+        print(f"Error in end_session: {e}")
         return {
             "status": "error",
             "message": str(e)
         }
+
+    # try:
+    #     student_answer_session.end_question()
+    #     return {
+    #         "status": "success",
+    #         "message": "Question session ended"
+    #     }
+    # except Exception as e:
+    #     print(f"Error ending question session: {e}")
+    #     return {
+    #         "status": "error",
+    #         "message": str(e)
+    #     }
 
 
 @api.get('/api/getStudentAnswers')
