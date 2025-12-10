@@ -464,23 +464,46 @@ async def end_question_session(data: dict = None):
 @api.get('/api/getStudentAnswers')
 async def get_student_answers():
     """
-    Route to retrieve student answers
-    to be displayed for the teacher
-    :return:
+    Route to retrieve student answers to be displayed for the teacher.
+    Returns a list of questions (currently just the active one) and their answers.
     """
-    # Extract the code from the nested structure
-    student_code = code['studentAnswers']['code']
-    redis_client = getattr(api.state, "redis", None)
     try:
-        if redis_client is not None:
-            await redis_client.rpush("student_answers", student_code)
-        else:
-            student_answer_session.queue_prompt(student_code)
-    except Exception as e:
-        print(f"Redis write failed for student answer, falling back: {e}")
-        student_answer_session.queue_prompt(student_code)
+        # 1. Retrieve the answers from the in-memory session
+        # session.py's get_answers() returns a list of code strings
+        answers = student_answer_session.get_answers()
+        
+        # 2. Retrieve metadata about the current question
+        prompt_text = student_answer_session.prompt
+        question_id = student_answer_session.current_question_id or "current_session"
+        
+        # 3. If there is no active question and no answers, return empty list
+        if not prompt_text and not answers:
+             return {
+                "status": "success",
+                "questions": []
+            }
 
-    return {'status': 'received'}
+        # 4. Construct the data object exactly how the React Frontend expects it
+        # The frontend expects an array called "questions"
+        question_data = {
+            "question_id": question_id,
+            "prompt": prompt_text if prompt_text else "No active prompt",
+            "answers": answers, # List of strings containing code
+            "answer_count": len(answers)
+        }
+
+        return {
+            "status": "success",
+            "questions": [question_data] 
+        }
+
+    except Exception as e:
+        print(f"Error retrieving student answers: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "questions": []
+        }
 
     # # Normalize incoming payload
     # payload = None
